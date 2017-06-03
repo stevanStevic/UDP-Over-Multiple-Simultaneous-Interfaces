@@ -104,7 +104,7 @@ int main()
         return -1;
     }
 
-    printf("\nListening on %s...\n", device->description);
+    printf("\nListening on %s...\n", device->name);
 
     // At this point, we don't need any more the device list. Free it
     pcap_freealldevs(devices);
@@ -113,42 +113,41 @@ int main()
 
     // Retrieve the packets
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
-//        ethernet_header * eh;
-//        ip_header* ih;
-//        int ip_len;
-//        udp_header* uh;
-//        unsigned char * app_data;
-//        int app_length;
+        ethernet_header * eh;
+        ip_header* ih;
+        int ip_len;
+        udp_header* uh;
+        unsigned char * app_data;
+        int app_length;
+         // Check if timeout has elapsed
+        if(result == 0)
+            continue;
 
-//         // Check if timeout has elapsed
-//        if(result == 0)
-//            continue;
+          // Print libpcap/WinPcap pseudo header
+        print_winpcap_header(packet_header, ++packet_counter);
 
-//        // Print libpcap/WinPcap pseudo header
-//        print_winpcap_header(packet_header, ++packet_counter);
+          /* DATA LINK LAYER - Ethernet */
+        // Retrive the position of the ethernet header
+        eh = (ethernet_header *)packet_data;
+        // Print ethernet header
+        print_ethernet_header(eh);
 
-//        /* DATA LINK LAYER - Ethernet */
-//        // Retrive the position of the ethernet header
-//        eh = (ethernet_header *)packet_data;
-//        // Print ethernet header
-//        print_ethernet_header(eh);
+        /* NETWORK LAYER - IPv4 */
+        // Retrieve the position of the ip header
+        ih = (ip_header*) (packet_data + sizeof(ethernet_header));
+        // Print ip header
+        print_ip_header(ih);
 
-//        /* NETWORK LAYER - IPv4 */
-//        // Retrieve the position of the ip header
-//        ih = (ip_header*) (packet_data + sizeof(ethernet_header));
-//        // Print ip header
-//        print_ip_header(ih);
+        /* TRANSPORT LAYER - UDP */
+        // Retrieve the position of the udp header
+        ip_len = ih->header_length * 4; // header length is calculated using words (1 word = 4 bytes)
+        uh = (udp_header*) ((unsigned char*)ih + ip_len);
 
-//        /* TRANSPORT LAYER - UDP */
-//        // Retrieve the position of the udp header
-//        ip_len = ih->header_length * 4; // header length is calculated using words (1 word = 4 bytes)
-//        uh = (udp_header*) ((unsigned char*)ih + ip_len);
-
-        printf("Packets captured : %\r", ++c);
+        printf("Packets captured : %d\r", ++c);
+        fflush(stdout);
 
         // For demonstration purpose
-        printf("\n\nPress enter to receive new packet\r");
-        getchar();
+        //printf("\nPress enter to receive new packet\r");
     }
 
     if(result == -1){
