@@ -67,8 +67,8 @@ typedef struct tcp_header {
 // FC (Frame count) header
 #pragma pack(1)
 typedef struct fc_header {
-    unsigned long long pck_count;
-    unsigned long long num_of_total_pcks;
+    unsigned long long frame_count;
+    unsigned long long num_of_total_frames;
     unsigned char* data[DATA_SIZE];\
     unsigned int data_len;
 } fc_header;
@@ -79,7 +79,7 @@ typedef struct frame_st {
     ethernet_header eh;
     ip_header ih;
     udp_header uh;
-    fc_header pch;
+    fc_header fch;
 } frame;
 
 // ACK frame

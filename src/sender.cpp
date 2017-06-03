@@ -9,6 +9,7 @@
 #include <iostream>
 #include <pcap.h>
 #include "protocol_headers.h"
+#include "network.h"
 
 using namespace std;
 
