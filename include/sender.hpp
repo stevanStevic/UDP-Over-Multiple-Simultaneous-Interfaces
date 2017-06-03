@@ -1,12 +1,9 @@
 #ifndef SENDER_HPP
 #define SENDER_HPP
 
-#include "sender.hpp"
-#include "network.h"
+void packet_handler(unsigned char* user, const struct pcap_pkthdr* packet_header, const unsigned char* packet_data);
+pcap_if_t* select_device(pcap_if_t* devices);
 
-int main() {
-
-    return 0;
-}
+pcap_t* device_handle_in, *device_handle_out;
 
 #endif
