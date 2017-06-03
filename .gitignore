@@ -1,0 +1,12 @@
+# swap files
+*.swp
+
+# Qt Creator
+*.config
+*.creator
+*.user
+*.files
+*.includes
+
+# BackUp files
+*~

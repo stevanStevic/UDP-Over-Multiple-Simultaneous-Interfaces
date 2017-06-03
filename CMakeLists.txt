@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 2.4)
+project(UDP-Over-Multiple-Simultaneous-Interfaces)
+set(CMAKE_C_STANDARD 11)
+include_directories(include)
+link_libraries(pcap pthread)
+add_executable(sender ${SOURCE_FILES} src/sender.cpp)
+add_executable(reciever ${SOURCE_FILES} src/reciever.cpp)
