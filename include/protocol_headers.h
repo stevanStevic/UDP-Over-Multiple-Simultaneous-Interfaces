@@ -91,4 +91,9 @@ typedef struct ack_st{
     unsigned long long ack_num;
 } ack_frame;
 
+typedef struct pck_data {
+    char* data;
+    unsigned long long data_num;
+} pck_data;
+
 #endif

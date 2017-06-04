@@ -1,28 +1,31 @@
-#ifdef _MSC_VER
-    #define _CRT_SECURE_NO_WARNINGS
-#else
-#include <netinet/in.h>
-#include <time.h>
-#endif
-
 #include <stdlib.h>
 #include <iostream>
 #include <pcap.h>
+#include <thread>
 #include "network.hpp"
 #include "protocol_headers.h"
 #include "sender.hpp"
 #include "Segmenter.hpp"
 
-using namespace std;
+char error_buffer[PCAP_ERRBUF_SIZE];
 
-//ETH
-unsigned char source_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
-unsigned char dest_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
+void ethThreadFunction(pcap_if_t* device) {
+    // Open the output eth adapter
+    if ((device_handle_eth = pcap_open_live(device->name, 65536, 1, 1000, error_buffer)) == NULL){
+        printf("\n Unable to open adapter %s.\n", device->name);
+
+    }
+
+}
+
+void wlanThreadFunction(pcap_if_t* device) {
+
+}
 
 int main() {
     pcap_if_t* devices;
-    pcap_if_t* device;
-    char error_buffer[PCAP_ERRBUF_SIZE];
+    pcap_if_t* device_eth;
+    pcap_if_t* device_wlan;
 
     /*
      * Retrieve the device list on the local machine
@@ -32,19 +35,24 @@ int main() {
         return -1;
     }
 
-    if ((device = select_device(devices)) == NULL) {
+    // Choose eth device
+    if ((device_eth = select_device(devices)) == NULL) {
             pcap_freealldevs(devices);
             return -1;
     }
 
-    // Open the output adapter
-    if ((device_handle_out = pcap_open_live(device->name, 65536, 1, 1000, error_buffer)) == NULL){
-        printf("\n Unable to open adapter %s.\n", device->name);
-        return -1;
+    // Choose wlan device
+    if ((device_wlan = select_device(devices)) == NULL) {
+            pcap_freealldevs(devices);
+            return -1;
     }
 
+    std::thread ethThread(ethThreadFunction, device_eth);
+    std::thread wlanThread(wlanThreadFunction, device_wlan);
+
+/*
     frame frame_to_send;
-    char b[15] = "tekst.txt";
+    char b[100] = "/home/stevan/Desktop/ORM2/tekst.txt";
 
     //fill_data_frame(frame_to_send, source_mac_eth, dest_mac_eth, b, 0, 1, 5);
    // fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, b, 1, 1, 6);
@@ -52,8 +60,25 @@ int main() {
     //pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
 
     Segmenter segmenter(b);
-    segmenter.split_file();
+    if(!segmenter.split_file()) {
+        std::cout << "[ERROR] Can't open file " << segmenter.get_file_name() << std::endl;
+    }
 
+    for(int i = 0; i < segmenter.get_num_of_pcks(); i++)  {
+        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, segmenter.get_file_parts().at(i), i, segmenter.get_num_of_pcks(), DATA_SIZE);
+        pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
+
+        std::cout << i << std::endl;
+/*
+        for(int j = 0; j < DATA_SIZE; j++) {
+            std::cout << segmenter.get_file_parts().at(i)[j] << std::endl;
+        }*/
+
+    int n;
+    std::cin >> n;
+    /*for(int i = 0; i < 200; i++) {
+        segmenter.get_file_parts().
+    }
     fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, segmenter.get_file_parts()[0], 0, segmenter.get_num_of_pcks(), DATA_SIZE);
     pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
 
