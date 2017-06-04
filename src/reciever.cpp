@@ -107,46 +107,20 @@ int main()
     // Retrieve the packets
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
 
-        ethernet_header * eh;
-        ip_header* ih;
-        int ip_len;
-        udp_header* uh;
-        fc_header* fh;
-        unsigned char *app_data;
+        unsigned char app_data[DATA_SIZE];
         int app_length;
         unsigned long long ack_num;
         int uh_len;
 
-        // Check if timeout has elapsed
-        if(result == 0)
-            continue;
+        frame* pFrame;
 
-        /* DATA LINK LAYER - Ethernet */
-        // Retrive the position of the ethernet header
-        eh = (ethernet_header *)packet_data;
+        pFrame = (frame*)packet_data;
 
-        /* NETWORK LAYER - IPv4 */
-        // Retrieve the position of the ip header
-        ih = (ip_header*) (packet_data + sizeof(ethernet_header));
+        for (int i = 0; i < pFrame->fch.data_len; i++){
+            app_data[i] = pFrame->fch.data[i];
+        }
 
-        /* TRANSPORT LAYER - UDP */
-        // Retrieve the position of the udp header
-        ip_len = ih->header_length * 4; // header length is calculated using words (1 word = 4 bytes)
-        uh = (udp_header*) ((unsigned char*)ih + ip_len);
-
-        /* CUSTOM LAYER - FC */
-        uh_len = sizeof(udp_header);
-        fh = ((fc_header*)(uh + uh_len));
-
-        app_data = ((unsigned char *)fh->data);
-        app_length = fh->data_len;
-        ack_num = fh->frame_count;
-
-        /*for (int i = 0; i < fh->data_len; i++){
-            app_data[i] = fh->data[i];
-        }*/
-
-        printf("\nRecieved data : %c\n", app_data[0]);
+        printf("\nRecieved data : %s\n", app_data);
         fflush(stdout);
 
     }
