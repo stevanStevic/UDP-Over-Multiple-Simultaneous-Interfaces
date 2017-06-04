@@ -93,6 +93,7 @@ pck_data Segmenter::getFront() {
         temp = fileParts.front();
         fileParts.erase(fileParts.begin());
         partsInVector--;
+        full = false;
     }
     vectorMutex.unlock();
 
@@ -102,5 +103,9 @@ pck_data Segmenter::getFront() {
 void Segmenter::putPartBack(pck_data pd) {
     vectorMutex.lock();
     fileParts.push_back(pd);
+    partsInVector++;
+    if(partsInVector == BUFF_SIZE) {
+        full = true;
+    }
     vectorMutex.unlock();
 }

@@ -1,9 +1,6 @@
 #include "network.hpp"
 #include <string.h>
 
-unsigned char source_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
-unsigned char dest_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
-
 // Ethernet header
 void setup_ethernet_header(frame* frame_to_send, unsigned char*source_mac, unsigned char* dest_mac) {
     memcpy(&(frame_to_send->eh.src_address), source_mac, 6);

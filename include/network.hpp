@@ -14,10 +14,6 @@
 #define CLIENT_PORT 27015
 #define SERVER_PORT 27016
 
-//ETH
-extern unsigned char source_mac_eth[6];
-extern unsigned char dest_mac_eth[6];
-
 void setup_ethernet_header(frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac);
 void setup_ip_header(frame* frame_to_send);
 void setup_udp_header(frame* frame_to_send, int frameToSet);
