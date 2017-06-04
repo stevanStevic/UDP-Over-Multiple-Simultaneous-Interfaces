@@ -1,8 +1,8 @@
-#include "network.h"
+#include "network.hpp"
 #include <string.h>
 
 // Ethernet header
-void setup_ethernet_header(frame* frame_to_send, char* source_mac, char* dest_mac) {
+void setup_ethernet_header(frame* frame_to_send, unsigned char*source_mac, unsigned char* dest_mac) {
     memcpy(&(frame_to_send->eh.src_address), source_mac, 6);
     memcpy(&(frame_to_send->eh.dest_address), dest_mac, 6);
     frame_to_send->eh.type = htons(0x0800);
@@ -58,7 +58,7 @@ void setup_fc_header(frame* frame_to_send, unsigned long long frame_cnt, unsigne
     //memcpy(frame_to_send->fch.data, buff, data_len);
 }
 
-void fill_data_frame(frame* frame_to_send, char* source_mac, char* dest_mac, char* buff, unsigned long long frame_cnt, unsigned long long total_num_of_frames, unsigned int data_len) {
+void fill_data_frame(frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac, char* buff, unsigned long long frame_cnt, unsigned long long total_num_of_frames, unsigned int data_len) {
     setup_ethernet_header(frame_to_send, source_mac, dest_mac);
 
     setup_ip_header(frame_to_send);
@@ -68,7 +68,7 @@ void fill_data_frame(frame* frame_to_send, char* source_mac, char* dest_mac, cha
     setup_fc_header(frame_to_send, frame_cnt, total_num_of_frames, buff, data_len);
 }
 
-ack_frame* fill_ack_frame(frame* frame_to_send, char* source_mac, char* dest_mac, unsigned long long ack_number) {
+ack_frame* fill_ack_frame(frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac, unsigned long long ack_number) {
     ack_frame* ack_f;
 
     setup_ethernet_header(frame_to_send, source_mac, dest_mac);

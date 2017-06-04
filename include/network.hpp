@@ -14,12 +14,12 @@
 #define CLIENT_PORT 27015
 #define SERVER_PORT 27016
 
-void setup_ethernet_header(frame* frame_to_send, char* source_mac, char* dest_mac);
+void setup_ethernet_header(frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac);
 void setup_ip_header(frame* frame_to_send);
 void setup_udp_header(frame* frame_to_send, int frameToSet);
 void setup_fc_header(frame* frame_to_send, unsigned long long frame_cnt, unsigned long long total_num_of_frames, char* buff, unsigned int data_len);
 
-void fill_data_frame(frame* frame_to_send, char* source_mac, char* dest_mac, char* buff, unsigned long long frame_cnt, unsigned long long total_num_of_frames, unsigned int data_len);
-ack_frame* fill_ack_frame(frame* frame_to_send, char* source_mac, char* dest_mac, unsigned long long ack_number);
+void fill_data_frame(frame* frame_to_send,unsigned char* source_mac, unsigned char* dest_mac, char* buff, unsigned long long frame_cnt, unsigned long long total_num_of_frames, unsigned int data_len);
+ack_frame* fill_ack_frame(frame* frame_to_send, unsigned char** source_mac, unsigned char* dest_mac, unsigned long long ack_number);
 
 #endif

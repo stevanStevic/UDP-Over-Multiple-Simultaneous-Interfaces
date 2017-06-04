@@ -16,11 +16,10 @@
 using namespace std;
 
 //ETH
-char source_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
-char dest_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
+unsigned char source_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
+unsigned char dest_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
 
 int main() {
-    int sentBytes;
     pcap_if_t* devices;
     pcap_if_t* device;
     char error_buffer[PCAP_ERRBUF_SIZE];
@@ -48,7 +47,7 @@ int main() {
     char b[6] = "steva";
 
     //fill_data_frame(frame_to_send, source_mac_eth, dest_mac_eth, b, 0, 1, 5);
-    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, b, 1, 1, 5);
+    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, b, 1, 1, 6);
 
     pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
 
