@@ -16,9 +16,6 @@
 #include <mutex>
 #include <fstream>
 
-//unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
-//unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
-
 /*
  * Global variables, for communication between threads and proper
  * file asembly.
@@ -28,10 +25,10 @@ unsigned long long expected;
 std::vector<fc_header> common_buffer;
 std::mutex common_buffer_mutex;
 std::mutex file_mutex;
+//char *path = "/home/godra/Desktop/example.png";
 
+int main(){
 
-int main()
-{
     pcap_if_t* devices;
     pcap_if_t* device_eth;
     pcap_if_t* device_wlan;
@@ -212,7 +209,6 @@ pcap_if_t* select_device(pcap_if_t* devices) {
 void eth_thread_function(pcap_t* device_handle){
 
     int result;							// result of pcap_next_ex function
-    int packet_counter = 0;				// counts packets in order to have numerated packets
     struct pcap_pkthdr* packet_header;	// header of packet (timestamp and length)
     const unsigned char* packet_data;	// packet content
 
@@ -234,10 +230,10 @@ void eth_thread_function(pcap_t* device_handle){
 
        if(pFrame->fch.frame_count == expected){ //If frame is in order
 
+           std::cout << "Usao ovde\n";
            //Lock here, for file manipulation
            file_mutex.lock();
-           std::cout << "Usao ovde";
-           file.open("/home/godra/Desktop/example.txt", std::ios::out | std::ios::app | std::ios::binary);
+           file.open("/home/godra/Desktop/example.png", std::ios::out | std::ios::app | std::ios::binary);
            if(!file.is_open()){
                printf("File opening failed\n");
            }
@@ -257,10 +253,9 @@ void eth_thread_function(pcap_t* device_handle){
                fc_header current_item = (fc_header)(*it);
 
                 if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
-
                     //Lock file mutex before writing to file
                     file_mutex.lock();
-                    file.open("/home/godra/Desktop/example.txt"); //Open file
+                    file.open("/home/godra/Desktop/example.png"); //Open file
                     if(!file.is_open()){
                         printf("File opening failed");
                     }
@@ -279,6 +274,8 @@ void eth_thread_function(pcap_t* device_handle){
            common_buffer_mutex.unlock();
 
        } else {
+
+           std::cout << "\nIde preko reda!!!\n";
 
            //Lock down here for adding it to temp buffer (for out of order frames)
            common_buffer_mutex.lock();
