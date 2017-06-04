@@ -69,13 +69,6 @@ int main()
         return -1;
     }
 
-//    // Check the link layer. We support only Ethernet for simplicity.
-//    if(pcap_datalink(device_handle) != DLT_EN10MB)
-//    {
-//        printf("\nThis program works only on Ethernet networks.\n");
-//        return -1;
-//    }
-
 #ifdef _WIN32
     if(device->addresses != NULL)
         /* Retrieve the mask of the first address of the interface */
@@ -117,37 +110,36 @@ int main()
         ip_header* ih;
         int ip_len;
         udp_header* uh;
+        fc_header* fh;
         unsigned char * app_data;
         int app_length;
-         // Check if timeout has elapsed
+        unsigned long long ack_num;
+
+        // Check if timeout has elapsed
         if(result == 0)
             continue;
-
-          // Print libpcap/WinPcap pseudo header
-        print_winpcap_header(packet_header, ++packet_counter);
 
           /* DATA LINK LAYER - Ethernet */
         // Retrive the position of the ethernet header
         eh = (ethernet_header *)packet_data;
-        // Print ethernet header
-        print_ethernet_header(eh);
 
         /* NETWORK LAYER - IPv4 */
         // Retrieve the position of the ip header
         ih = (ip_header*) (packet_data + sizeof(ethernet_header));
-        // Print ip header
-        print_ip_header(ih);
 
         /* TRANSPORT LAYER - UDP */
         // Retrieve the position of the udp header
         ip_len = ih->header_length * 4; // header length is calculated using words (1 word = 4 bytes)
         uh = (udp_header*) ((unsigned char*)ih + ip_len);
 
-        printf("Packets captured : %d\r", ++c);
-        fflush(stdout);
+        /* CUSTOM LAYER - FC */
+        uh_len = sizeof(udp_header);
+        fh = ((fc_header*)(uh + uh_len));
 
-        // For demonstration purpose
-        //printf("\nPress enter to receive new packet\r");
+        app_data = ((unsigned char *)fh->data);
+        app_length = fh->data_len;
+        ack_num = fh->frame_count;
+
     }
 
     if(result == -1){
