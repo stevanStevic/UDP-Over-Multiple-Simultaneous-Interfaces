@@ -7,18 +7,26 @@
 #include "sender.hpp"
 #include "Segmenter.hpp"
 
+unsigned char source_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
+unsigned char dest_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
 char error_buffer[PCAP_ERRBUF_SIZE];
 
-void ethThreadFunction(pcap_if_t* device) {
+void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
+    frame frame_to_send;
+
     // Open the output eth adapter
     if ((device_handle_eth = pcap_open_live(device->name, 65536, 1, 1000, error_buffer)) == NULL){
         printf("\n Unable to open adapter %s.\n", device->name);
 
     }
 
+    pck_data pd = segmenter->getFront();
+
+    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, pd.data, pd.data_num, segmenter->getNumOfPcks(), DATA_SIZE);
+    pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
 }
 
-void wlanThreadFunction(pcap_if_t* device) {
+void wlanThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
 
 }
 
@@ -47,8 +55,15 @@ int main() {
             return -1;
     }
 
-    std::thread ethThread(ethThreadFunction, device_eth);
-    std::thread wlanThread(wlanThreadFunction, device_wlan);
+    char b[100] = "/home/stevan/Desktop/ORM2/tekst.txt";
+    Segmenter segmenter(b);
+    segmenter.splitFile();
+
+    std::thread ethThread(ethThreadFunction, device_eth, &segmenter);
+    std::thread wlanThread(wlanThreadFunction, device_wlan, &segmenter);
+
+    ethThread.join();
+    wlanThread.join();
 
 /*
     frame frame_to_send;
