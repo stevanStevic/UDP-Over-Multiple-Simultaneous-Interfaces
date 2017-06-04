@@ -44,16 +44,24 @@ int main() {
     }
 
     frame frame_to_send;
-    char b[6] = "steva";
+    char b[15] = "tekst.txt";
 
     //fill_data_frame(frame_to_send, source_mac_eth, dest_mac_eth, b, 0, 1, 5);
-    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, b, 1, 1, 6);
+   // fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, b, 1, 1, 6);
 
+    //pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
+
+    Segmenter segmenter(b);
+    segmenter.split_file();
+
+    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, segmenter.get_file_parts()[0], 0, segmenter.get_num_of_pcks(), DATA_SIZE);
     pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
 
-   // Segmenter segmenter("tekst.txt");
-    //segmenter.split_file()
-
+   /* for(int i = 0; i < segmenter.get_num_of_pcks(); i++) {
+        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, segmenter.get_file_parts()[i], i, segmenter.get_num_of_pcks(), DATA_SIZE);
+        pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
+    }
+*/
     return 0;
 }
 

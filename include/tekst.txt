@@ -1,0 +1,57 @@
+/*
+ * protocol_headers.c
+ *
+ *  Created on: May 12, 2017
+ *      Author: alexa
+ */
+#include "Include/protocol_headers.h"
+
+//ETH
+char source_mac_eth[6] = { 0x28, 0xf1, 0x0e, 0x43, 0x81, 0x3e };
+char dest_mac_eth[6] = { 0x28, 0xd2, 0x44, 0x51, 0xe9, 0xf1} ;
+
+//WIFI
+char source_mac_wifi[6] = { 0xe4, 0x02, 0x9b, 0x88, 0x0a, 0xdb };
+char dest_mac_wifi[6] = { 0x0c, 0x8b, 0xfd, 0xb4, 0x6d, 0x79 };
+
+int total_packet_count;
+
+void setup_frame_headers(frame* setup_frame, char* source_mac, char* dest_mac) {
+	// Ethernet header
+	memcpy(&(setup_frame->eh.src_address), source_mac, 6);
+	memcpy(&(setup_frame->eh.dest_address), dest_mac, 6);
+	setup_frame->eh.type = htons(0x0800);
+
+	// IP header
+	setup_frame->ih.header_length = 0x04;
+	setup_frame->ih.version = 0x05;
+	setup_frame->ih.tos = 0x00;
+	setup_frame->ih.length = htons(sizeof(frame) - sizeof(ethernet_header));
+	setup_frame->ih.identification = 0x0000;
+	setup_frame->ih.fragm_flags = 0x0000;
+	setup_frame->ih.fragm_offset = 0x0000;
+	setup_frame->ih.ttl = 0x7f;
+	setup_frame->ih.next_protocol = 0x11;
+
+	unsigned int s = 0x4500 + (sizeof(frame) - sizeof(ethernet_header)) + 0x7F11;
+	unsigned short u = (0xFFFF0000 & s) >> 16;
+	s = (s & 0x0000FFFF) + u;
+
+	setup_frame->ih.checksum = htons(~(u_short)s);
+
+	memset(setup_frame->ih.dst_addr, 0, 4);
+	memset(setup_frame->ih.src_addr, 0, 4);
+
+	// UDP header
+	setup_frame->uh.dest_port = htons(CLIENT_PORT);
+	setup_frame->uh.src_port = htons(SERVER_PORT);
+	setup_frame->uh.datagram_length = htons(sizeof(udp_header)+ sizeof(user_header));
+	setup_frame->uh.checksum = htons(0);
+}
+
+void setup_ack_frame_headers(ack_frame* setup_frame, char* source_mac, char* dest_mac) {
+	// Ethernet header
+	memcpy(&(setup_frame->eh.src_address), source_mac, 6);
+	memcpy(&(setup_frame->eh.dest_address), dest_mac, 6);
+	setup_frame->eh.type = htons(0x0800);
+

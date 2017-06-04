@@ -16,6 +16,14 @@ public:
     Segmenter(char* file_name);
 
     bool split_file();
+
+    std::vector<char*> get_file_parts() {
+        return file_parts;
+    }
+
+    unsigned long long get_num_of_pcks() {
+        return num_of_pcks;
+    }
 };
 
 

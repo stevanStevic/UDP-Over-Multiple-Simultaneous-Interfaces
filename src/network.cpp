@@ -68,18 +68,12 @@ void fill_data_frame(frame* frame_to_send, unsigned char* source_mac, unsigned c
     setup_fc_header(frame_to_send, frame_cnt, total_num_of_frames, buff, data_len);
 }
 
-ack_frame* fill_ack_frame(frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac, unsigned long long ack_number) {
-    ack_frame* ack_f;
+void fill_ack_frame(ack_frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac, unsigned long long ack_number) {
+    setup_ethernet_header((frame*)frame_to_send, source_mac, dest_mac);
 
-    setup_ethernet_header(frame_to_send, source_mac, dest_mac);
+    setup_ip_header((frame*)frame_to_send);
 
-    setup_ip_header(frame_to_send);
+    setup_udp_header((frame*)frame_to_send, 1);
 
-    setup_udp_header(frame_to_send, 1);
-
-    ack_f = (ack_frame*)frame_to_send;
-
-    ack_f->ack_num = ack_number;
-
-    return ack_f;
+    frame_to_send->ack_num = ack_number;
 }
