@@ -9,16 +9,25 @@
 #include <pcap.h>
 #include "protocol_headers.h"
 #include "network.hpp"
+#include "reciever.hpp"
 #include "Segmenter.hpp"
 #include <vector>
+#include <thread>
+#include <mutex>
+#include <fstream>
 
 unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
 unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
 
-// Function declarations
-pcap_if_t* select_device(pcap_if_t* devices);
+/*
+ * Global variables, for communication between threads and proper
+ * file asembly.
+ */
+std::ofstream file;
+unsigned long long expected = 0;
+std::vector<fc_header> common_buffer;
+std::mutex common_buffer_mutex;
 
-using namespace std;
 
 int main()
 {
@@ -33,10 +42,7 @@ int main()
     char filter_exp[] = "udp";
     struct bpf_program fcode;
 
-    int result;							// result of pcap_next_ex function
-    int packet_counter = 0;				// counts packets in order to have numerated packets
-    struct pcap_pkthdr* packet_header;	// header of packet (timestamp and length)
-    const unsigned char* packet_data;	// packet content
+    file.open("example.txt");
 
     /* Retrieve the device list on the local machine */
     if(pcap_findalldevs(&devices, error_buffer) == -1)
@@ -45,6 +51,7 @@ int main()
         return -1;
     }
 
+    printf("\nSelect your ethernet interface first :\n\n");
     // Chose one device from the list
     device_eth = select_device(devices);
 
@@ -55,9 +62,9 @@ int main()
         return -1;
     }
 
-    printf("You have selected device %s ", device_eth->name);
+    printf("You have selected device %s \n", device_eth->name);
 
-
+    printf("\nSelecet your wireless interface now :\n\n");
     // Chose one device from the list
     device_wlan = select_device(devices);
 
@@ -155,6 +162,12 @@ int main()
         return -1;
     }
 
+    std::thread eth_thread(eth_thread_function, device_handle_eth);
+    eth_thread.join();
+
+    file.close();
+    return 0;
+
 //    printf("\nListening on %s...\n", device->name);
 
 //    // At this point, we don't need any more the device list. Free it
@@ -214,12 +227,10 @@ int main()
 
 //    getchar();
 //    return 0;
-    return 0;
 }
 
 // This function provide possibility to choose device from the list of available devices
-pcap_if_t* select_device(pcap_if_t* devices)
-{
+pcap_if_t* select_device(pcap_if_t* devices) {
     int device_number;
     int i=0;			// Count devices and provide jumping to the selected device
     pcap_if_t* device;	// Iterator for device list
@@ -255,3 +266,91 @@ pcap_if_t* select_device(pcap_if_t* devices)
 
     return device;
 }
+
+
+void eth_thread_function(pcap_t* device_handle){
+
+    int result;							// result of pcap_next_ex function
+    int packet_counter = 0;				// counts packets in order to have numerated packets
+    struct pcap_pkthdr* packet_header;	// header of packet (timestamp and length)
+    const unsigned char* packet_data;	// packet content
+
+
+    printf("\nRecieveing data over ethernet\n");
+
+    while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
+
+       frame* pFrame;
+
+       pFrame = (frame*)packet_data;
+
+       if(pFrame->fch.frame_count == expected){ //If frame is in order
+
+           //Lock here, for file manipulation
+           common_buffer_mutex.lock();
+           file << pFrame->fch.data;
+           ++expected; //Increment to next frame
+
+           //After writing to file check the out-of-order-buffer for more frames to write to file
+           std::vector<fc_header>::iterator it;
+           int i;
+           for(it = common_buffer.begin(); it != common_buffer.end(); it++, i++){
+
+               fc_header current_item = (fc_header)(*it);
+
+                if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
+                    file << current_item.data; //Write it to file
+                    ++expected; //Increment to expect next fram
+                    common_buffer.erase(common_buffer.begin() + i); //Erase that good frame from out-of-order-buffer
+
+                }
+           }
+
+           //Unlock here
+           common_buffer_mutex.unlock();
+
+       } else {
+
+           //Lock down here for adding it to temp buffer (for out of order frames)
+           common_buffer_mutex.lock();
+           common_buffer.push_back(pFrame->fch);
+           //Unlock after adding it to temp buffer
+           common_buffer_mutex.unlock();
+
+       }
+
+       printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
+       if(pFrame->fch.num_of_total_frames - 1 == pFrame->fch.frame_count)
+           break;
+    }
+}
+
+
+
+//       for (int i = 0; i < pFrame->fch.data_len; i++){
+//           app_data[i] = pFrame->fch.data[i];
+//       }
+
+       //Make new ack frame and set it up
+//       ack_frame af;
+//       fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count);
+//       if(pcap_sendpacket(device_handle, (const unsigned char *)&af, sizeof(ack_frame)) != 0){
+//           printf("\nFailed to send ack frame\n");
+//           fflush(stdout);
+//       }
+
+//       recieve_buff.push_back(app_data);
+
+//       printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
+//       if(pFrame->fch.num_of_total_frames - 1 == pFrame->fch.frame_count)
+//           break;
+
+//    }
+
+//    printf("Data recieved: \n");
+//    std::vector<char*>::iterator it;
+//    for(it = recieve_buff.begin(); it != recieve_buff.end(); it++){
+//        printf("%s", *it);
+//    }
+
+//}
