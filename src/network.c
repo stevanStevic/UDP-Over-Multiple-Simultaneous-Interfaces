@@ -31,10 +31,18 @@ void setup_ip_header(frame* frame_to_send) {
 }
 
 // UDP header
-void setup_udp_header(frame* frame_to_send) {
+/* frameToSet - If 0 data frame will be set, if 1 ack frame will be set. */
+void setup_udp_header(frame* frame_to_send, int frameToSet) {
     frame_to_send->uh.dest_port = htons(CLIENT_PORT);
     frame_to_send->uh.src_port = htons(SERVER_PORT);
-    frame_to_send->uh.datagram_length = htons(sizeof(udp_header)+ sizeof(fc_header));
+
+    if(frameToSet) {
+        frame_to_send->uh.datagram_length = htons(sizeof(udp_header)+ sizeof(unsigned long long));
+    }
+    else {
+        frame_to_send->uh.datagram_length = htons(sizeof(udp_header)+ sizeof(fc_header));
+    }
+
     frame_to_send->uh.checksum = htons(0);
 }
 
@@ -52,7 +60,7 @@ void fill_data_frame(frame* frame_to_send, char* source_mac, char* dest_mac, cha
 
     setup_ip_header(frame_to_send);
 
-    setup_udp_header(frame_to_send);
+    setup_udp_header(frame_to_send, 0);
 
     setup_fc_header(frame_to_send, frame_cnt, total_num_of_frames, buff, data_len);
 }
@@ -64,7 +72,7 @@ void fill_ack_frame(frame* frame_to_send, char* source_mac, char* dest_mac, unsi
 
     setup_ip_header(frame_to_send);
 
-    setup_udp_header(frame_to_send);
+    setup_udp_header(frame_to_send, 1);
 
     ack_f = (ack_frame*)frame_to_send;
 
