@@ -106,20 +106,22 @@ int main()
 
     // Retrieve the packets
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
+
         ethernet_header * eh;
         ip_header* ih;
         int ip_len;
         udp_header* uh;
         fc_header* fh;
-        unsigned char * app_data;
+        unsigned char *app_data;
         int app_length;
         unsigned long long ack_num;
+        int uh_len;
 
         // Check if timeout has elapsed
         if(result == 0)
             continue;
 
-          /* DATA LINK LAYER - Ethernet */
+        /* DATA LINK LAYER - Ethernet */
         // Retrive the position of the ethernet header
         eh = (ethernet_header *)packet_data;
 
@@ -140,6 +142,13 @@ int main()
         app_length = fh->data_len;
         ack_num = fh->frame_count;
 
+        /*for (int i = 0; i < fh->data_len; i++){
+            app_data[i] = fh->data[i];
+        }*/
+
+        printf("\nRecieved data : %c\n", app_data[0]);
+        fflush(stdout);
+
     }
 
     if(result == -1){
@@ -147,6 +156,7 @@ int main()
         return -1;
     }
 
+    getchar();
     return 0;
 }
 
@@ -156,7 +166,6 @@ pcap_if_t* select_device(pcap_if_t* devices)
     int device_number;
     int i=0;			// Count devices and provide jumping to the selected device
     pcap_if_t* device;	// Iterator for device list
-
     // Print the list
     for(device=devices; device; device=device->next)
     {
