@@ -16,8 +16,8 @@
 #include <mutex>
 #include <fstream>
 
-unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
-unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
+//unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
+//unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
 
 /*
  * Global variables, for communication between threads and proper
@@ -27,6 +27,7 @@ std::ofstream file;
 unsigned long long expected = 0;
 std::vector<fc_header> common_buffer;
 std::mutex common_buffer_mutex;
+std::mutex file_mutex;
 
 
 int main()
@@ -287,26 +288,36 @@ void eth_thread_function(pcap_t* device_handle){
        if(pFrame->fch.frame_count == expected){ //If frame is in order
 
            //Lock here, for file manipulation
-           common_buffer_mutex.lock();
+           file_mutex.lock();
            file << pFrame->fch.data;
            ++expected; //Increment to next frame
+           file_mutex.unlock();
 
            //After writing to file check the out-of-order-buffer for more frames to write to file
            std::vector<fc_header>::iterator it;
            int i;
+
+           //Lock out-of-order-buffer-mutex for walk through that buffer
+           common_buffer_mutex.lock();
            for(it = common_buffer.begin(); it != common_buffer.end(); it++, i++){
 
                fc_header current_item = (fc_header)(*it);
 
                 if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
+
+                    //Lock file mutex before writing to file
+                    file_mutex.lock();
                     file << current_item.data; //Write it to file
                     ++expected; //Increment to expect next fram
+                    //Unlock file mutex after writing to file
+                    file_mutex.unlock();
+
                     common_buffer.erase(common_buffer.begin() + i); //Erase that good frame from out-of-order-buffer
 
                 }
            }
 
-           //Unlock here
+           //Unlock out-of-order-buffer-mutex after iteration through it
            common_buffer_mutex.unlock();
 
        } else {
