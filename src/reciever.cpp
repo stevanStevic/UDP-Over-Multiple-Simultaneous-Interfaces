@@ -24,7 +24,7 @@
  * file asembly.
  */
 std::ofstream file;
-unsigned long long expected = 0;
+unsigned long long expected;
 std::vector<fc_header> common_buffer;
 std::mutex common_buffer_mutex;
 std::mutex file_mutex;
@@ -43,7 +43,7 @@ int main()
     char filter_exp[] = "udp";
     struct bpf_program fcode;
 
-    file.open("example.txt");
+    expected = 0;
 
     /* Retrieve the device list on the local machine */
     if(pcap_findalldevs(&devices, error_buffer) == -1)
@@ -166,68 +166,8 @@ int main()
     std::thread eth_thread(eth_thread_function, device_handle_eth);
     eth_thread.join();
 
-    file.close();
+    //file.close();
     return 0;
-
-//    printf("\nListening on %s...\n", device->name);
-
-//    // At this point, we don't need any more the device list. Free it
-//    pcap_freealldevs(devices);
-
-//    int c = 0;
-
-//    vector<unsigned char*> recieve_buff;
-//    unsigned char *app_data;
-
-//    // Retrieve the packets
-//    while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
-
-//        app_data = new unsigned char[DATA_SIZE];
-//        int app_length;
-//        unsigned long long ack_num;
-//        int uh_len;
-
-//        frame* pFrame;
-
-//        pFrame = (frame*)packet_data;
-
-//        for (int i = 0; i < pFrame->fch.data_len; i++){
-//            app_data[i] = pFrame->fch.data[i];
-//        }
-
-//        //Make new ack frame and set it up
-////        ack_frame af;
-////        fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count);
-////        if(pcap_sendpacket(device_handle, (const unsigned char *)&af, sizeof(ack_frame)) != 0){
-////            printf("\nFailed to send ack frame\n");
-////            fflush(stdout);
-////        }
-
-//        recieve_buff.push_back(app_data);
-
-//        printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100.0);
-//        fflush(stdout);
-
-//        if(pFrame->fch.num_of_total_frames - 1 == pFrame->fch.frame_count)
-//            break;
-
-//    }
-
-//    printf("\nRecieve complete");
-//    vector<unsigned char*> :: iterator it;
-
-//    printf("\nRecieved data:\n");
-//    for(it = recieve_buff.begin(); it != recieve_buff.end(); it++){
-//        printf("%s\n", (*it));
-//    }
-
-//    if(result == -1){
-//        printf("Error reading the packets: %s\n", pcap_geterr(device_handle));
-//        return -1;
-//    }
-
-//    getchar();
-//    return 0;
 }
 
 // This function provide possibility to choose device from the list of available devices
@@ -282,15 +222,28 @@ void eth_thread_function(pcap_t* device_handle){
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
 
        frame* pFrame;
+       printf("Frame captured\n");
 
        pFrame = (frame*)packet_data;
+
+       std::cout << "Frame count of current frame: " << pFrame->fch.frame_count << "\n";
+
+       std::cout << "Expected : " << expected << "\n";
+
+       std::cout << "Total frames : " << pFrame->fch.num_of_total_frames << "\n";
 
        if(pFrame->fch.frame_count == expected){ //If frame is in order
 
            //Lock here, for file manipulation
            file_mutex.lock();
+           std::cout << "Usao ovde";
+           file.open("/home/godra/Desktop/example.txt", std::ios::out | std::ios::app | std::ios::binary);
+           if(!file.is_open()){
+               printf("File opening failed\n");
+           }
            file << pFrame->fch.data;
-           ++expected; //Increment to next frame
+           file.close();
+           expected = expected + 1; //Increment to next frame
            file_mutex.unlock();
 
            //After writing to file check the out-of-order-buffer for more frames to write to file
@@ -307,8 +260,13 @@ void eth_thread_function(pcap_t* device_handle){
 
                     //Lock file mutex before writing to file
                     file_mutex.lock();
+                    file.open("/home/godra/Desktop/example.txt"); //Open file
+                    if(!file.is_open()){
+                        printf("File opening failed");
+                    }
                     file << current_item.data; //Write it to file
-                    ++expected; //Increment to expect next fram
+                    file.close(); //Close file
+                    expected = expected + 1; //Increment to expect next fram
                     //Unlock file mutex after writing to file
                     file_mutex.unlock();
 
@@ -330,38 +288,9 @@ void eth_thread_function(pcap_t* device_handle){
 
        }
 
-       printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
-       if(pFrame->fch.num_of_total_frames - 1 == pFrame->fch.frame_count)
-           break;
+       //printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
+       if(pFrame->fch.num_of_total_frames - 1 == expected)
+            break;
+
     }
 }
-
-
-
-//       for (int i = 0; i < pFrame->fch.data_len; i++){
-//           app_data[i] = pFrame->fch.data[i];
-//       }
-
-       //Make new ack frame and set it up
-//       ack_frame af;
-//       fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count);
-//       if(pcap_sendpacket(device_handle, (const unsigned char *)&af, sizeof(ack_frame)) != 0){
-//           printf("\nFailed to send ack frame\n");
-//           fflush(stdout);
-//       }
-
-//       recieve_buff.push_back(app_data);
-
-//       printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
-//       if(pFrame->fch.num_of_total_frames - 1 == pFrame->fch.frame_count)
-//           break;
-
-//    }
-
-//    printf("Data recieved: \n");
-//    std::vector<char*>::iterator it;
-//    for(it = recieve_buff.begin(); it != recieve_buff.end(); it++){
-//        printf("%s", *it);
-//    }
-
-//}
