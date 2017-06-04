@@ -8,12 +8,16 @@
 #include <stdlib.h>
 #include <iostream>
 #include <pcap.h>
+#include "network.hpp"
 #include "protocol_headers.h"
-#include "network.h"
 #include "sender.hpp"
 #include "Segmenter.hpp"
 
 using namespace std;
+
+//ETH
+char source_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
+char dest_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
 
 int main() {
     int sentBytes;
@@ -40,8 +44,16 @@ int main() {
         return -1;
     }
 
-    Segmenter segmenter("tekst.txt");
-    segmenter.split_file();
+    frame frame_to_send;
+    char b[6] = "steva";
+
+    //fill_data_frame(frame_to_send, source_mac_eth, dest_mac_eth, b, 0, 1, 5);
+    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, b, 1, 1, 5);
+
+    pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
+
+   // Segmenter segmenter("tekst.txt");
+    //segmenter.split_file()
 
     return 0;
 }
@@ -82,4 +94,5 @@ pcap_if_t* select_device(pcap_if_t* devices) {
         device=device->next;
     }
 
+    return device;
 }

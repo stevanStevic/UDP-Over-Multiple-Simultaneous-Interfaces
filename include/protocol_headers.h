@@ -69,7 +69,7 @@ typedef struct tcp_header {
 typedef struct fc_header {
     unsigned long long frame_count;
     unsigned long long num_of_total_frames;
-    unsigned char* data[DATA_SIZE];\
+    char data[DATA_SIZE];\
     unsigned int data_len;
 } fc_header;
 

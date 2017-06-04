@@ -10,8 +10,8 @@ void setup_ethernet_header(frame* frame_to_send, char* source_mac, char* dest_ma
 
 // IP header
 void setup_ip_header(frame* frame_to_send) {
-    frame_to_send->ih.header_length = 0x04;
-    frame_to_send->ih.version = 0x05;
+    frame_to_send->ih.version = 0x4;
+    frame_to_send->ih.header_length = 0x5;
     frame_to_send->ih.tos = 0x00;
     frame_to_send->ih.length = htons(sizeof(frame) - sizeof(ethernet_header));
     frame_to_send->ih.identification = 0x0000;
@@ -20,7 +20,7 @@ void setup_ip_header(frame* frame_to_send) {
     frame_to_send->ih.ttl = 0x7f;
     frame_to_send->ih.next_protocol = 0x11;
 
-    unsigned int s = 0x4500 + (sizeof(frame) - sizeof(ethernet_header)) + 0x7F11;
+    unsigned int s = 0x5400 + (sizeof(frame) - sizeof(ethernet_header)) + 0x7F11;
     unsigned short u = (0xFFFF0000 & s) >> 16;
     s = (s & 0x0000FFFF) + u;
 
@@ -52,7 +52,10 @@ void setup_fc_header(frame* frame_to_send, unsigned long long frame_cnt, unsigne
     frame_to_send->fch.num_of_total_frames = total_num_of_frames;
     frame_to_send->fch.data_len = data_len;
 
-    memcpy(frame_to_send->fch.data, buff, data_len);
+    for(int i = 0; i < data_len; i++) {
+        frame_to_send->fch.data[i] = buff[i];
+    }
+    //memcpy(frame_to_send->fch.data, buff, data_len);
 }
 
 void fill_data_frame(frame* frame_to_send, char* source_mac, char* dest_mac, char* buff, unsigned long long frame_cnt, unsigned long long total_num_of_frames, unsigned int data_len) {
