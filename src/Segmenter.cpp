@@ -7,6 +7,7 @@
 Segmenter::Segmenter(char* fileName) {
     this->fileName = fileName;
 
+    full = false;
     currPos = 0;
     partsInVector = 0;
     if(getSize() == false) {
@@ -46,13 +47,14 @@ bool Segmenter::splitFile() {
         if(isFull() == false) {
             for(int i = currPos; i < numOfPcks; i++) {
                 pck_data tData;
-                buff_t = new char[DATA_SIZE];
 
                 //If it's last one than only the rest needs to be read not, DATA_SIZE
                 if(currPos == numOfPcks - 1) {
-                    fh.read(buff_t, size - (currPos * DATA_SIZE));
+                    buff_t = new char[size % DATA_SIZE];
+                    fh.read(buff_t, size % DATA_SIZE);
                 }
                 else {
+                    buff_t = new char[DATA_SIZE];
                     fh.read(buff_t, DATA_SIZE);
                 }
 

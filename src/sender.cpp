@@ -20,13 +20,69 @@ void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
 
     }
 
-    pck_data pd = segmenter->getFront();
+    for(int i = 0; i < segmenter->getNumOfPcks(); i++) {
+        pck_data pd = segmenter->getFront();
+        int tryCount = 0;
+        int result;
+        struct pcap_pkthdr* packet_header;
+        const unsigned char* packet_data;
+      //  for(int i = 0; i < 200; i++) {
+            //std::cout << segmenter->getNumOfPcks() << std::endl;
+       // }
 
-    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, pd.data, pd.data_num, segmenter->getNumOfPcks(), DATA_SIZE);
-    pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
+        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, pd.data, pd.data_num, segmenter->getNumOfPcks(), DATA_SIZE);
+        pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
+
+        while ((result = pcap_next_ex(device_handle_eth, &packet_header, &packet_data)) >= 0) {
+            if(result == 1) {
+                ack_frame* ack_f = (ack_frame*)packet_data;
+                std::cout << ack_f->ack_num  << std::endl;
+                if(ack_f->ack_num == pd.data_num) {
+                    delete []pd.data;
+                    break;
+                }
+                else {
+                    if(++tryCount == 5) {
+                        std::cout << "saljiii " << tryCount << std::endl;
+                        break;
+                    }
+                    else {
+                        pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
+                        std::cout << "result 1 al else" << tryCount << std::endl;
+                    }
+                }
+            }
+            else {
+                if(++tryCount == 5) {
+                    std::cout << "saljiii pusi" << tryCount << std::endl;
+                    break;
+                }
+                else {
+                    pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
+                    std::cout << "result nije 1 al else" << tryCount << std::endl;
+                }
+            }
+        }
+    }
 }
 
 void wlanThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
+/*    frame frame_to_send;
+
+    // Open the output eth adapter
+    if ((device_handle_wlan = pcap_open_live(device->name, 65536, 1, 1000, error_buffer)) == NULL){
+        printf("\n Unable to open adapter %s.\n", device->name);
+
+    }
+
+    pck_data pd = segmenter->getFront();
+
+    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, pd.data, pd.data_num, 1, DATA_SIZE);
+    pcap_sendpacket(device_handle_wlan, (const unsigned char*)&frame_to_send, sizeof(frame));
+    */
+}
+
+void segmenterThreadFunction(Segmenter* segmenter) {
 
 }
 
@@ -55,53 +111,21 @@ int main() {
             return -1;
     }
 
-    char b[100] = "/home/stevan/Desktop/ORM2/tekst.txt";
+    char b[100] = "/home/stevan/Desktop/ORM2/small_smile.png";
     Segmenter segmenter(b);
     segmenter.splitFile();
 
     std::thread ethThread(ethThreadFunction, device_eth, &segmenter);
     std::thread wlanThread(wlanThreadFunction, device_wlan, &segmenter);
+    std::thread segmenterThread(segmenterThreadFunction, &segmenter);
 
     ethThread.join();
     wlanThread.join();
-
-/*
-    frame frame_to_send;
-    char b[100] = "/home/stevan/Desktop/ORM2/tekst.txt";
-
-    //fill_data_frame(frame_to_send, source_mac_eth, dest_mac_eth, b, 0, 1, 5);
-   // fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, b, 1, 1, 6);
-
-    //pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
-
-    Segmenter segmenter(b);
-    if(!segmenter.split_file()) {
-        std::cout << "[ERROR] Can't open file " << segmenter.get_file_name() << std::endl;
-    }
-
-    for(int i = 0; i < segmenter.get_num_of_pcks(); i++)  {
-        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, segmenter.get_file_parts().at(i), i, segmenter.get_num_of_pcks(), DATA_SIZE);
-        pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
-
-        std::cout << i << std::endl;
-/*
-        for(int j = 0; j < DATA_SIZE; j++) {
-            std::cout << segmenter.get_file_parts().at(i)[j] << std::endl;
-        }*/
+    segmenterThread.join();
 
     int n;
     std::cin >> n;
-    /*for(int i = 0; i < 200; i++) {
-        segmenter.get_file_parts().
-    }
-    fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, segmenter.get_file_parts()[0], 0, segmenter.get_num_of_pcks(), DATA_SIZE);
-    pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
 
-   /* for(int i = 0; i < segmenter.get_num_of_pcks(); i++) {
-        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, segmenter.get_file_parts()[i], i, segmenter.get_num_of_pcks(), DATA_SIZE);
-        pcap_sendpacket(device_handle_out, (const unsigned char*)&frame_to_send, sizeof(frame));
-    }
-*/
     return 0;
 }
 
