@@ -1,1 +1,0 @@
-/usr/bin/c++   -std=c++11 -pthread    CMakeFiles/reciever.dir/src/Segmenter.o CMakeFiles/reciever.dir/src/network.o CMakeFiles/reciever.dir/src/reciever.o  -o reciever -rdynamic -lpcap -lpthread 

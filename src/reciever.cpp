@@ -30,6 +30,8 @@ std::mutex file_mutex;
 unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
 unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
 
+unsigned char src_ip_eth[4] = {0x0a, 0x51, 0x23, 0x29};
+unsigned char dest_ip_eth[4] = {0x0a, 0x51, 0x23, 0x2b};
 
 int main(){
 
@@ -240,7 +242,7 @@ void eth_thread_function(pcap_t* device_handle){
 		   std::cout << "Total frames : " << pFrame->fch.num_of_total_frames << "\n";
 
 			ack_frame af;
-		   fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count);
+		   fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count, src_ip_eth, dest_ip_eth);
 		   pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
 
 		   if(pFrame->fch.frame_count == expected){ //If frame is in order

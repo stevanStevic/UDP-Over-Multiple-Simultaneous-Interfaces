@@ -7,18 +7,51 @@
 #include "sender.hpp"
 #include "Segmenter.hpp"
 
-unsigned char source_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
-unsigned char dest_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
+unsigned char source_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xf1, 0xbf};
+unsigned char dest_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xeb, 0xd9};
+
+unsigned char src_ip_eth[4] = {0x0a, 0x51, 0x23, 0x2b};
+unsigned char dest_ip_eth[4] = {0x0a, 0x51, 0x23, 0x29};
+
 char error_buffer[PCAP_ERRBUF_SIZE];
 
 void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
-    frame frame_to_send;
-
-    // Open the output eth adapter
+    frame frame_to_send;  
+    unsigned int netmask;
+	char filter_exp[] = "udp portrange 27015-27016";
+	struct bpf_program fcode;
+	    
+	// Open the output eth adapter
     if ((device_handle_eth = pcap_open_live(device->name, 65536, 1, 1000, error_buffer)) == NULL){
         printf("\n Unable to open adapter %s.\n", device->name);
 
     }
+	    
+#ifdef _WIN32
+    if(device->addresses != NULL)
+        /* Retrieve the mask of the first address of the interface */
+        netmask=((struct sockaddr_in *)(device->addresses->netmask))->sin_addr.S_un.S_addr;
+    else
+        /* If the interface is without addresses we suppose to be in a C class network */
+        netmask=0xffffff;
+#else
+    if (!device->addresses->netmask)
+        netmask = 0;
+    else
+        netmask = ((struct sockaddr_in *)(device->addresses->netmask))->sin_addr.s_addr;
+#endif
+
+	// Compile the filter	
+	if (pcap_compile(device_handle_eth, &fcode, filter_exp, 1, netmask) < 0)
+	{
+		printf("\n Unable to compile the packet filter. Check the syntax.\n");
+	}
+
+	// Set the filter
+	if (pcap_setfilter(device_handle_eth, &fcode) < 0)
+	{
+		printf("\n Error setting the filter.\n");
+	}
 
     for(int i = 0; i < segmenter->getNumOfPcks(); i++) {
         pck_data pd = segmenter->getFront();
@@ -30,7 +63,7 @@ void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
             //std::cout << segmenter->getNumOfPcks() << std::endl;
        // }
 
-        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, pd.data, pd.data_num, segmenter->getNumOfPcks(), DATA_SIZE);
+        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, pd.data, pd.data_num, segmenter->getNumOfPcks(), DATA_SIZE, src_ip_eth, dest_ip_eth);
         pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
 
         while ((result = pcap_next_ex(device_handle_eth, &packet_header, &packet_data)) >= 0) {
@@ -43,23 +76,23 @@ void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
                 }
                 else {
                     if(++tryCount == 5) {
-                        std::cout << "saljiii " << tryCount << std::endl;
+                        std::cout << "saljiii " << tryCount <<  std::endl;
                         break;
                     }
                     else {
                         pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
-                        std::cout << "result 1 al else" << tryCount << std::endl;
+                        std::cout << pd.data_num << "result 1 al else" << tryCount << std::endl;
                     }
                 }
             }
             else {
                 if(++tryCount == 5) {
-                    std::cout << "saljiii pusi" << tryCount << std::endl;
+                    std::cout << "saljiiikad je result nula" << tryCount << std::endl;
                     break;
                 }
                 else {
                     pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
-                    std::cout << "result nije 1 al else" << tryCount << std::endl;
+                    std::cout << pd.data_num << "result nije 1 al else" << tryCount << std::endl;
                 }
             }
         }
@@ -111,7 +144,7 @@ int main() {
             return -1;
     }
 
-    char b[100] = "/home/stevan/Desktop/ORM2/small_smile.png";
+    char b[100] = "/home/rtrk/Desktop/example.txt";
     Segmenter segmenter(b);
     segmenter.splitFile();
 

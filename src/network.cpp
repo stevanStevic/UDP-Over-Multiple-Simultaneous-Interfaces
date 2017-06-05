@@ -9,7 +9,7 @@ void setup_ethernet_header(frame* frame_to_send, unsigned char*source_mac, unsig
 }
 
 // IP header
-void setup_ip_header(frame* frame_to_send) {
+void setup_ip_header(frame* frame_to_send, unsigned char* src_ip, unsigned char* dest_ip) {
     frame_to_send->ih.version = 0x4;
     frame_to_send->ih.header_length = 0x5;
     frame_to_send->ih.tos = 0x00;
@@ -26,8 +26,13 @@ void setup_ip_header(frame* frame_to_send) {
 
     frame_to_send->ih.checksum = htons(~(u_short)s);
 
+	memcpy(&(frame_to_send->ih.src_addr), src_ip, 4);
+	memcpy(&(frame_to_send->ih.dst_addr), dest_ip, 4);
+    
+/*
     memset(frame_to_send->ih.dst_addr, 0, 4);
     memset(frame_to_send->ih.src_addr, 0, 4);
+    */
 }
 
 // UDP header
@@ -58,20 +63,20 @@ void setup_fc_header(frame* frame_to_send, unsigned long long frame_cnt, unsigne
     //memcpy(frame_to_send->fch.data, buff, data_len);
 }
 
-void fill_data_frame(frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac, char* buff, unsigned long long frame_cnt, unsigned long long total_num_of_frames, unsigned int data_len) {
+void fill_data_frame(frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac, char* buff, unsigned long long frame_cnt, unsigned long long total_num_of_frames, unsigned int data_len, unsigned char* src_ip, unsigned char* dest_ip) {
     setup_ethernet_header(frame_to_send, source_mac, dest_mac);
 
-    setup_ip_header(frame_to_send);
+    setup_ip_header(frame_to_send, src_ip, dest_ip);
 
     setup_udp_header(frame_to_send, 0);
 
     setup_fc_header(frame_to_send, frame_cnt, total_num_of_frames, buff, data_len);
 }
 
-void fill_ack_frame(ack_frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac, unsigned long long ack_number) {
+void fill_ack_frame(ack_frame* frame_to_send, unsigned char* source_mac, unsigned char* dest_mac, unsigned long long ack_number, unsigned char* src_ip, unsigned char* dest_ip) {
     setup_ethernet_header((frame*)frame_to_send, source_mac, dest_mac);
 
-    setup_ip_header((frame*)frame_to_send);
+    setup_ip_header((frame*)frame_to_send, src_ip, dest_ip);
 
     setup_udp_header((frame*)frame_to_send, 1);
 
