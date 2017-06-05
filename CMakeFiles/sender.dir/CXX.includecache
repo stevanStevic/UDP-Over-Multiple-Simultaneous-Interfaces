@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/rtrk/Desktop/UDP-Over-Multiple-Simultaneous-Interfaces/src/network.cpp
+network.hpp
+/home/rtrk/Desktop/UDP-Over-Multiple-Simultaneous-Interfaces/src/network.hpp
+string.h
+-
+
+include/network.hpp
+netinet/in.h
+-
+time.h
+-
+pcap.h
+-
+protocol_headers.h
+include/protocol_headers.h
+
+include/protocol_headers.h
+netinet/in.h
+-
+time.h
+-
+

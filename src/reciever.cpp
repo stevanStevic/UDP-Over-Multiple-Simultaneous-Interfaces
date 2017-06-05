@@ -30,6 +30,7 @@ std::mutex file_mutex;
 unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
 unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
 
+
 int main(){
 
     pcap_if_t* devices;
@@ -40,7 +41,7 @@ int main(){
     char error_buffer[PCAP_ERRBUF_SIZE];
     unsigned int netmask_eth;
     unsigned int netmask_wlan;
-    char filter_exp[] = "udp";
+    char filter_exp[] = "udp portrange 27015-27016";
     struct bpf_program fcode;
 
     expected = 0;
@@ -220,81 +221,102 @@ void eth_thread_function(pcap_t* device_handle){
 
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
 
-       frame* pFrame;
-       printf("Frame captured\n");
+		if(result == 0) {
+			std::cout << "Timeout expired" << std::endl;
+		
+		}
+			else {
+			std::cout << result << std::endl;
 
-       pFrame = (frame*)packet_data;
+		   frame* pFrame;
+		   printf("Frame captured\n");
 
-       std::cout << "Frame count of current frame: " << pFrame->fch.frame_count << "\n";
+		   pFrame = (frame*)packet_data;
 
-       std::cout << "Expected : " << expected << "\n";
+		   std::cout << "Frame count of current frame: " << pFrame->fch.frame_count << "\n";
 
-       std::cout << "Total frames : " << pFrame->fch.num_of_total_frames << "\n";
+		   std::cout << "Expected : " << expected << "\n";
 
-       if(pFrame->fch.frame_count == expected){ //If frame is in order
+		   std::cout << "Total frames : " << pFrame->fch.num_of_total_frames << "\n";
 
-           std::cout << "Usao ovde\n";
-           //Lock here, for file manipulation
-           file_mutex.lock();
-           file.open("/home/godra/Desktop/example.txt", std::ios::out | std::ios::app | std::ios::binary);
-           if(!file.is_open()){
-               printf("File opening failed\n");
-           }
-           file << pFrame->fch.data;
-           file.close();
-           expected = expected + 1; //Increment to next frame
-           file_mutex.unlock();
+			ack_frame af;
+		   fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count);
+		   pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
 
-           //After writing to file check the out-of-order-buffer for more frames to write to file
-           std::vector<fc_header>::iterator it;
-           int i;
+		   if(pFrame->fch.frame_count == expected){ //If frame is in order
 
-           //Lock out-of-order-buffer-mutex for walk through that buffer
-           common_buffer_mutex.lock();
-           for(it = common_buffer.begin(); it != common_buffer.end(); it++, i++){
+		       std::cout << "Usao ovde\n";
+		       //Lock here, for file manipulation
+		       file_mutex.lock();
+		       file.open("/home/rtrk/Desktop/example.txt", std::ios::out | std::ios::app | std::ios::binary);
+		       if(!file.is_open()){
+		           printf("File opening failed\n");
+		       }
+		       file << pFrame->fch.data;
+		       file.close();
+		       expected = expected + 1; //Increment to next frame
+		       file_mutex.unlock();
 
-               fc_header current_item = (fc_header)(*it);
+		       //After writing to file check the out-of-order-buffer for more frames to write to file
+		       std::vector<fc_header>::iterator it;
+		       int i;
 
-                if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
-                    //Lock file mutex before writing to file
-                    file_mutex.lock();
-                    file.open("/home/godra/Desktop/example.txt"); //Open file
-                    if(!file.is_open()){
-                        printf("File opening failed");
-                    }
-                    file << current_item.data; //Write it to file
-                    file.close(); //Close file
-                    expected = expected + 1; //Increment to expect next fram
-                    //Unlock file mutex after writing to file
-                    file_mutex.unlock();
+		       //Lock out-of-order-buffer-mutex for walk through that buffer
+		       common_buffer_mutex.lock();
+			   it = common_buffer.begin();
+			   i = 0;
+		       //for(it = common_buffer.begin(); it != common_buffer.end(); it++, i++){
+			   while(it != common_buffer.end()) {
 
-                    common_buffer.erase(common_buffer.begin() + i); //Erase that good frame from out-of-order-buffer
+					fc_header current_item = (fc_header)(*it);
 
-                }
-           }
+					if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
+						//Lock file mutex before writing to file
+						file_mutex.lock();
+						file.open("/home/rtrk/Desktop/example.txt"); //Open file
+						if(!file.is_open()){
+							printf("File opening failed");
+						}
+						file << current_item.data; //Write it to file
+						file.close(); //Close file
+						expected = expected + 1; //Increment to expect next fram
+						//Unlock file mutex after writing to file
+						file_mutex.unlock();
 
-           //Unlock out-of-order-buffer-mutex after iteration through it
-           common_buffer_mutex.unlock();
+						common_buffer.erase(common_buffer.begin() + i); //Erase that good frame from out-of-order-buffer
+						it = common_buffer.begin();
+						i = 0;
+					}
+					i++;
+					it++;
+		       }
 
-       } else {
+		       //Unlock out-of-order-buffer-mutex after iteration through it
+		       common_buffer_mutex.unlock();
 
-           std::cout << "\nIde preko reda!!!\n";
+		   } else {
 
-           //Lock down here for adding it to temp buffer (for out of order frames)
-           common_buffer_mutex.lock();
-           common_buffer.push_back(pFrame->fch);
-           //Unlock after adding it to temp buffer
-           common_buffer_mutex.unlock();
+		       std::cout << "\nIde preko reda!!!\n";
 
-       }
+		       //Lock down here for adding it to temp buffer (for out of order frames)
+		       common_buffer_mutex.lock();
+		       common_buffer.push_back(pFrame->fch);
+		       //Unlock after adding it to temp buffer
+				std::vector<fc_header>::iterator it;
+				std::cout << "###########Sadrzaj bafera za out of order ###########" << std::endl;
+				for(it = common_buffer.begin(); it != common_buffer.end(); it++){
+					fc_header current_item = (fc_header)(*it);
+					std::cout << current_item.num_of_total_frames << std::endl;
+				}
+				std::cout << "#####################################################" << std::endl;			
 
-       ack_frame af;
-       fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count);
-       pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
+		       common_buffer_mutex.unlock();
 
-       //printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
-       if(pFrame->fch.num_of_total_frames - 1 == expected)
-            break;
+		   }
 
+		   //printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
+		   if(pFrame->fch.num_of_total_frames == expected)
+		        break;
+		}
     }
 }

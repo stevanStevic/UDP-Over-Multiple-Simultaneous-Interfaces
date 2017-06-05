@@ -1,0 +1,1 @@
+/usr/bin/c++   -std=c++11 -pthread    CMakeFiles/sender.dir/src/Segmenter.o CMakeFiles/sender.dir/src/network.o CMakeFiles/sender.dir/src/sender.o  -o sender -rdynamic -lpcap -lpthread 
