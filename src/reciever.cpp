@@ -27,6 +27,9 @@ std::mutex common_buffer_mutex;
 std::mutex file_mutex;
 //char *path = "/home/godra/Desktop/example.png";
 
+unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
+unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
+
 int main(){
 
     pcap_if_t* devices;
@@ -233,7 +236,7 @@ void eth_thread_function(pcap_t* device_handle){
            std::cout << "Usao ovde\n";
            //Lock here, for file manipulation
            file_mutex.lock();
-           file.open("/home/godra/Desktop/example.png", std::ios::out | std::ios::app | std::ios::binary);
+           file.open("/home/godra/Desktop/example.txt", std::ios::out | std::ios::app | std::ios::binary);
            if(!file.is_open()){
                printf("File opening failed\n");
            }
@@ -255,7 +258,7 @@ void eth_thread_function(pcap_t* device_handle){
                 if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
                     //Lock file mutex before writing to file
                     file_mutex.lock();
-                    file.open("/home/godra/Desktop/example.png"); //Open file
+                    file.open("/home/godra/Desktop/example.txt"); //Open file
                     if(!file.is_open()){
                         printf("File opening failed");
                     }
@@ -284,6 +287,10 @@ void eth_thread_function(pcap_t* device_handle){
            common_buffer_mutex.unlock();
 
        }
+
+       ack_frame af;
+       fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count);
+       pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
 
        //printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
        if(pFrame->fch.num_of_total_frames - 1 == expected)
