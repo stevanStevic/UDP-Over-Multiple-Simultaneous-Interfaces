@@ -2,7 +2,7 @@
 #define SEGMENTER_HPP
 
 #include <iostream>
-#include <vector>
+#include <list>
 #include "protocol_headers.h"
 #include <mutex>
 
@@ -18,7 +18,7 @@
 class Segmenter {
 private:
     char* fileName;
-    std::vector<pck_data> fileParts;
+    std::list<pck_data> fileParts;
     unsigned long long size;
     unsigned long long numOfPcks;
     int currPos;
@@ -37,15 +37,17 @@ public:
         return numOfPcks;
     }
 
-    bool splitFile();
+    int splitFile();
     bool getSize();
     bool isFull() {
         return full;
     }
 
-    pck_data getFront();
+    int getFront(pck_data* pd);
     void putPartBack(pck_data);
-
+    bool isFinished() {
+        return currPos >= numOfPcks ? true : false;
+    }
 };
 
 

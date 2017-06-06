@@ -1,6 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include <vector>
+#include <list>
 #include "protocol_headers.h"
 #include "Segmenter.hpp"
 
@@ -33,80 +33,105 @@ bool Segmenter::getSize() {
     }
 }
 
-bool Segmenter::splitFile() {
+int Segmenter::splitFile() {
     char* buff_t;
 
     // Opens the file
     std::ifstream fh(fileName, std::ios::in|std::ios::binary);
 
-    if (fh.is_open())
-    {
-        //Find the position next for reading
-        fh.seekg (currPos * DATA_SIZE, std::ios::beg);
+    // If hole file is segmented
+    //std::cout << "curPos " << currPos << " numPck " << numOfPcks << "isfin" << isFinished() << std::endl;
+    if(!isFinished()) {
+        if (fh.is_open())
+        {
+            //Find the position next for reading
+            fh.seekg (currPos * DATA_SIZE, std::ios::beg);
 
-        if(isFull() == false) {
-            for(int i = currPos; i < numOfPcks; i++) {
-                pck_data tData;
+            //If there is space in buffer
+            if(isFull() == false) {
+                for(int i = currPos; i < numOfPcks; i++) {
+                    pck_data tData;
 
-                //If it's last one than only the rest needs to be read not, DATA_SIZE
-                if(currPos == numOfPcks - 1) {
-                    buff_t = new char[size % DATA_SIZE];
-                    fh.read(buff_t, size % DATA_SIZE);
-                    tData.data_size = size % DATA_SIZE;
+                    //If it's last one than only the rest of the size needs to be read, not DATA_SIZE
+                    if(currPos == numOfPcks - 1) {
+                        buff_t = new char[size % DATA_SIZE];
+                        fh.read(buff_t, size % DATA_SIZE);
+                        tData.data_size = size % DATA_SIZE;
+                    }
+                    else {
+                        buff_t = new char[DATA_SIZE];
+                        fh.read(buff_t, DATA_SIZE);
+                        tData.data_size = DATA_SIZE;
+                    }
+
+                    // Set data to be put in vector
+                    tData.data = buff_t;
+                    tData.data_num = currPos;
+
+                    vectorMutex.lock();
+                    fileParts.push_back(tData);
+                    partsInVector++;
+                    vectorMutex.unlock();
+
+                    currPos++;
+
+                    //Check if buffer is full
+                    std::lock_guard<std::mutex> lock(vectorMutex);
+                    if(partsInVector == BUFF_SIZE) {
+                        full = true;
+                        break;
+                    }
+
+                    //Get next
+                    fh.seekg (currPos * DATA_SIZE, std::ios::beg);
                 }
-                else {
-                    buff_t = new char[DATA_SIZE];
-                    fh.read(buff_t, DATA_SIZE);
-                    tData.data_size = DATA_SIZE;
-                }
 
-                // Set data to be put in vector
-                tData.data = buff_t;
-                tData.data_num = currPos;
+                fh.close();
 
-                vectorMutex.lock();
-                fileParts.push_back(tData);
-                partsInVector++;
-                vectorMutex.unlock();
-
-                currPos++;
-
-                std::lock_guard<std::mutex> lock(vectorMutex);
-                if(partsInVector == BUFF_SIZE) {
-                    full = true;
-                    break;
-                }
-
-                fh.seekg (currPos * DATA_SIZE, std::ios::beg);
+                //Filled buffer with segments, not fully segmented
+                return 0;
             }
-
-            fh.close();
-            return true;
+        }
+        else {
+            //File not opened
+            return -1;
         }
     }
     else {
-        return false;
+        //File is fully segmented
+        return 1;
     }
 }
 
-pck_data Segmenter::getFront() {
-    pck_data temp;
+int Segmenter::getFront(pck_data* pd) {
+    int succ = 0;
 
     vectorMutex.lock();
     if(fileParts.empty() == false) {
-        temp = fileParts.front();
-        fileParts.erase(fileParts.begin());
+        *pd = fileParts.front();
+        fileParts.pop_front();
         partsInVector--;
         full = false;
+
+        //Took one from the buffer
+        succ = 0;
+    }
+    else if(isFinished()) {
+        //whole file is segmented
+        succ = 1;
+    }
+    else {
+        //File is not fully segmented but currently there is no parts in buffer
+        succ = -1;
     }
     vectorMutex.unlock();
 
-    return temp;
+    return succ;
 }
 
 void Segmenter::putPartBack(pck_data pd) {
     vectorMutex.lock();
-    fileParts.push_back(pd);
+    fileParts.push_front(pd);
     partsInVector++;
     if(partsInVector == BUFF_SIZE) {
         full = true;

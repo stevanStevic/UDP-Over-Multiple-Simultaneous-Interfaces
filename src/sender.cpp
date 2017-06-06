@@ -2,6 +2,7 @@
 #include <iostream>
 #include <pcap.h>
 #include <thread>
+#include <chrono>
 #include "network.hpp"
 #include "protocol_headers.h"
 #include "sender.hpp"
@@ -9,6 +10,11 @@
 
 unsigned char source_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xf1, 0xbf};
 unsigned char dest_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xeb, 0xd9};
+
+/*
+unsigned char source_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xf1, 0xbf};
+unsigned char dest_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xeb, 0xd9};
+*/
 
 unsigned char src_ip_eth[4] = {0x0a, 0x51, 0x23, 0x2b};
 unsigned char dest_ip_eth[4] = {0x0a, 0x51, 0x23, 0x29};
@@ -54,12 +60,22 @@ void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
 	}
 
     for(int i = 0; i < segmenter->getNumOfPcks(); i++) {
-        pck_data pd = segmenter->getFront();
-        int tryCount = 0;
+        pck_data pd;
         int result;
+        int tryCountNotRecieved = 0;
+        int tryCountRecieved = 0;
         struct pcap_pkthdr* packet_header;
         const unsigned char* packet_data;
 
+        result = segmenter->getFront(&pd);
+        if(result == -1) {
+            std::cout << "Dosao je ovdje"<< std::endl;
+            while(segmenter->getFront(&pd) == -1);
+        }
+        else if(result == 1) {
+            //All parts sent
+            return;
+        }
 /*
         for(int i = 0; i < pd.data_size; i++) {
             std::cout << pd.data[i];
@@ -81,26 +97,29 @@ void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
                     break;
                 }
                 else {
-                    if(++tryCount == 5) {
-                        std::cout << "saljiii " << tryCount <<  std::endl;
+                    if(++tryCountRecieved  == 5) {
+                        segmenter->putPartBack(pd);
+                        std::cout << "Didn't recive ack for packet: " << pd.data_num << std::endl;
                         break;
                     }
                     else {
-                        pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
-                        std::cout << pd.data_num << "result 1 al else" << tryCount << std::endl;
+                        std::cout << "Recived wrong ack number: " << ack_f->ack_num << " expected: " << pd.data_num << " Try count: " << tryCountRecieved << std::endl;
+
                     }
                 }
             }
             else {
-                if(++tryCount == 5) {
-                    std::cout << "saljiiikad je result nula" << tryCount << std::endl;
+                if(++tryCountNotRecieved  == 5) {
+                    segmenter->putPartBack(pd);
+                    std::cout << "Device not available any more" << std::endl;
                     break;
                 }
                 else {
-                    pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
-                    std::cout << pd.data_num << "result nije 1 al else" << tryCount << std::endl;
+                    std::cout << "Timeout expired. Sending packet " << pd.data_num << " again. Try count: " << tryCountNotRecieved << std::endl;
                 }
             }
+
+            pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
         }
     }
 }
@@ -123,6 +142,10 @@ void wlanThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
 
 void segmenterThreadFunction(Segmenter* segmenter) {
 
+    //While hole file is not segmented. When finished fully returns 1
+    while(segmenter->splitFile() != 1) {
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
 }
 
 int main() {
@@ -152,11 +175,11 @@ int main() {
 
     char b[100] = "/home/stevan/Desktop/ORM2/tux.png";
     Segmenter segmenter(b);
-    segmenter.splitFile();
+    //segmenter.splitFile();
 
+    std::thread segmenterThread(segmenterThreadFunction, &segmenter);
     std::thread ethThread(ethThreadFunction, device_eth, &segmenter);
     std::thread wlanThread(wlanThreadFunction, device_wlan, &segmenter);
-    std::thread segmenterThread(segmenterThreadFunction, &segmenter);
 
     ethThread.join();
     wlanThread.join();
