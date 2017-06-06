@@ -15,6 +15,7 @@
 #include <thread>
 #include <mutex>
 #include <fstream>
+#include <string.h>
 
 /*
  * Global variables, for communication between threads and proper
@@ -223,6 +224,8 @@ void eth_thread_function(pcap_t* device_handle){
 
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
 
+        char* temp = new char[DATA_SIZE];
+
 		if(result == 0) {
 			std::cout << "Timeout expired" << std::endl;
 		
@@ -250,11 +253,14 @@ void eth_thread_function(pcap_t* device_handle){
 		       std::cout << "Usao ovde\n";
 		       //Lock here, for file manipulation
 		       file_mutex.lock();
-		       file.open("/home/rtrk/Desktop/example.txt", std::ios::out | std::ios::app | std::ios::binary);
+               file.open("/home/godra/Desktop/example.png", std::ios::out | std::ios::app | std::ios::binary);
 		       if(!file.is_open()){
 		           printf("File opening failed\n");
 		       }
-		       file << pFrame->fch.data;
+
+               memcpy(temp, pFrame->fch.data, pFrame->fch.data_len * sizeof(char));
+               file.write(temp, pFrame->fch.data_len);
+                //file << pFrame->fch.data;
 		       file.close();
 		       expected = expected + 1; //Increment to next frame
 		       file_mutex.unlock();
@@ -275,11 +281,15 @@ void eth_thread_function(pcap_t* device_handle){
 					if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
 						//Lock file mutex before writing to file
 						file_mutex.lock();
-						file.open("/home/rtrk/Desktop/example.txt"); //Open file
+                        file.open("/home/godra/Desktop/example.png"); //Open file
 						if(!file.is_open()){
 							printf("File opening failed");
 						}
-						file << current_item.data; //Write it to file
+
+                        memcpy(temp, pFrame->fch.data, pFrame->fch.data_len * sizeof(char));
+                        file.write(temp, pFrame->fch.data_len);
+
+                        //file << current_item.data; //Write it to file
 						file.close(); //Close file
 						expected = expected + 1; //Increment to expect next fram
 						//Unlock file mutex after writing to file
@@ -315,6 +325,8 @@ void eth_thread_function(pcap_t* device_handle){
 		       common_buffer_mutex.unlock();
 
 		   }
+
+           delete[] temp;
 
 		   //printf("Recieving data %.2f '%' \r", (float)pFrame->fch.frame_count / pFrame->fch.num_of_total_frames * 100);
 		   if(pFrame->fch.num_of_total_frames == expected)
