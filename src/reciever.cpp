@@ -26,7 +26,6 @@ unsigned long long expected;
 std::vector<fc_header> common_buffer;
 std::mutex common_buffer_mutex;
 std::mutex file_mutex;
-//char *path = "/home/godra/Desktop/example.png";
 
 unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9}; //steva
 unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a}; //godra
@@ -36,6 +35,11 @@ unsigned char dest_ip_eth[4] = {0x0a, 0x51, 0x23, 0x2b};
 
 unsigned char dest_mac_wlan[6] = {0x60, 0xd8, 0x19, 0x59, 0x0d, 0xb3}; //steva
 unsigned char src_mac_wlan[6] = {0x54, 0x27, 0x1e, 0x83, 0x59, 0x8d}; //godra
+
+unsigned char src_ip_wlan[4] = {0xc0, 0xa8, 0x2b, 0xc4};
+unsigned char dest_ip_wlan[6] = {0xc0, 0xa8, 0x2b, 0xaa};
+
+#define PATH "/home/godra/Desktop/example.png"
 
 int main(){
 
@@ -171,9 +175,9 @@ int main(){
     }
 
     std::thread eth_thread(eth_thread_function, device_handle_eth);
-    //std::thread wlan_thread(wlan_thread_function, device_handle_wlan);
+    std::thread wlan_thread(wlan_thread_function, device_handle_wlan);
     eth_thread.join();
-    //wlan_thread.join();
+    wlan_thread.join();
 
     //file.close();
     return 0;
@@ -254,7 +258,10 @@ void eth_thread_function(pcap_t* device_handle){
             if(pFrame->fch.frame_count == expected){ //If frame is in order
                 //Lock here, for file manipulation
                 file_mutex.lock();
-                file.open("/home/godra/Desktop/example.png", std::ios::out | std::ios::app | std::ios::binary);
+
+                std::cout << "ETH" << std::endl;
+
+                file.open(PATH, std::ios::out | std::ios::app | std::ios::binary);
                 if(!file.is_open()){
                     printf("File opening failed\n");
                 }
@@ -282,7 +289,7 @@ void eth_thread_function(pcap_t* device_handle){
                         if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
 
                             file_mutex.lock(); //Lock file mutex before writing to file
-                            file.open("/home/godra/Desktop/example.png"); //Open file
+                            file.open(PATH, std::ios::out | std::ios::app | std::ios::binary); //Open file
                             if(!file.is_open()){
                                 printf("File opening failed");
                             }
@@ -294,8 +301,14 @@ void eth_thread_function(pcap_t* device_handle){
                             file_mutex.unlock(); //Unlock file mutex after writing to file
 
                             common_buffer.erase(common_buffer.begin() + i); //Erase that good frame from out-of-order-buffer
-                            it = common_buffer.begin();
-                            i = 0;
+                            if(!common_buffer.empty()) {
+                                it = common_buffer.begin();
+                                i = 0;
+                                continue;
+                            }else {
+                                break;
+                            }
+
                         }
                     i++;
                     it++;
@@ -305,7 +318,10 @@ void eth_thread_function(pcap_t* device_handle){
                     common_buffer_mutex.unlock();
                 }
 
-           } else if (strcmp(((const char *)pFrame->eh.src_address), (const char *)src_mac_eth) == 0) {
+           } else {
+
+                if(pFrame->fch.frame_count < expected)
+                    break;
 
                 std::cout << "\nIde preko reda!!!\n";
 
@@ -316,7 +332,7 @@ void eth_thread_function(pcap_t* device_handle){
                 std::cout << "###########Sadrzaj bafera za out of order ###########" << std::endl;
                 for(it = common_buffer.begin(); it != common_buffer.end(); it++){
                     fc_header current_item = (fc_header)(*it);
-                    std::cout << current_item.num_of_total_frames << std::endl;
+                    std::cout << current_item.frame_count << std::endl;
                 }
                 std::cout << "#####################################################" << std::endl;
 
@@ -361,13 +377,16 @@ void wlan_thread_function(pcap_t* device_handle){
             std::cout << "Total data : " << pFrame->fch.num_of_total_frames << std::endl;
 
             ack_frame af;
-            fill_ack_frame(&af, src_mac_wlan, dest_mac_wlan, pFrame->fch.frame_count, src_ip_eth, dest_ip_eth);
+            fill_ack_frame(&af, src_mac_wlan, dest_mac_wlan, pFrame->fch.frame_count, src_ip_wlan, dest_ip_wlan);
             pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
 
             if(pFrame->fch.frame_count == expected){ //If frame is in order
                 //Lock here, for file manipulation
                 file_mutex.lock();
-                file.open("/home/godra/Desktop/example.png", std::ios::out | std::ios::app | std::ios::binary);
+
+                std::cout << "WLAN" << std::endl;
+
+                file.open(PATH, std::ios::out | std::ios::app | std::ios::binary);
                 if(!file.is_open()){
                     printf("File opening failed\n");
                 }
@@ -382,7 +401,7 @@ void wlan_thread_function(pcap_t* device_handle){
                 std::vector<fc_header>::iterator it;
                 int i;
 
-                if(common_buffer.empty()) {
+                if(!common_buffer.empty()) {
 
                     //Lock out-of-order-buffer-mutex for walk through that buffer
                     common_buffer_mutex.lock();
@@ -395,7 +414,7 @@ void wlan_thread_function(pcap_t* device_handle){
                         if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
 
                             file_mutex.lock(); //Lock file mutex before writing to file
-                            file.open("/home/godra/Desktop/example.png"); //Open file
+                            file.open(PATH, std::ios::out | std::ios::app | std::ios::binary); //Open file
                             if(!file.is_open()){
                                 printf("File opening failed");
                             }
@@ -407,8 +426,14 @@ void wlan_thread_function(pcap_t* device_handle){
                             file_mutex.unlock(); //Unlock file mutex after writing to file
 
                             common_buffer.erase(common_buffer.begin() + i); //Erase that good frame from out-of-order-buffer
-                            it = common_buffer.begin();
-                            i = 0;
+
+                            if(!common_buffer.empty()) {
+                                it = common_buffer.begin();
+                                i = 0;
+                                continue;
+                            }else {
+                                break;
+                            }
                         }
                         i++;
                         it++;
@@ -418,7 +443,11 @@ void wlan_thread_function(pcap_t* device_handle){
                     common_buffer_mutex.unlock();
                 }
 
-           } else if (strcmp(((const char *)pFrame->eh.src_address), (const char *)src_mac_eth) == 0) {
+           } else {
+
+                if(pFrame->fch.frame_count < expected)
+                    break;
+
 
                 std::cout << "\nIde preko reda!!!\n";
 
@@ -429,7 +458,7 @@ void wlan_thread_function(pcap_t* device_handle){
                 std::cout << "###########Sadrzaj bafera za out of order ###########" << std::endl;
                 for(it = common_buffer.begin(); it != common_buffer.end(); it++){
                     fc_header current_item = (fc_header)(*it);
-                    std::cout << current_item.num_of_total_frames << std::endl;
+                    std::cout << current_item.frame_count << std::endl;
                 }
                 std::cout << "#####################################################" << std::endl;
 
