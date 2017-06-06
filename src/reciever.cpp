@@ -171,9 +171,9 @@ int main(){
     }
 
     std::thread eth_thread(eth_thread_function, device_handle_eth);
-    std::thread wlan_thread(wlan_thread_function, device_handle_wlan);
+    //std::thread wlan_thread(wlan_thread_function, device_handle_wlan);
     eth_thread.join();
-    wlan_thread.join();
+    //wlan_thread.join();
 
     //file.close();
     return 0;
@@ -225,7 +225,7 @@ void eth_thread_function(pcap_t* device_handle){
     const unsigned char* packet_data;	// packet content
 
 
-    printf("\nRecieveing data over ethernet\n");
+    printf("\nStrating data recieve over ethernet...\n");
 
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
 
@@ -339,7 +339,7 @@ void wlan_thread_function(pcap_t* device_handle){
     const unsigned char* packet_data;	// packet content
 
 
-    printf("\nRecieveing data over ethernet\n");
+    printf("\nStrating data recieve over wireless...\n");
 
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
 
@@ -382,7 +382,7 @@ void wlan_thread_function(pcap_t* device_handle){
                 std::vector<fc_header>::iterator it;
                 int i;
 
-                if(common_buffer.emplace) {
+                if(common_buffer.empty()) {
 
                     //Lock out-of-order-buffer-mutex for walk through that buffer
                     common_buffer_mutex.lock();
