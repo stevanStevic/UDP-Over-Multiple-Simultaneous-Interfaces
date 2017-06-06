@@ -93,6 +93,7 @@ typedef struct ack_st{
 
 typedef struct pck_data {
     char* data;
+    unsigned int data_size;
     unsigned long long data_num;
 } pck_data;
 

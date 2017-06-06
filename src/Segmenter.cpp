@@ -52,10 +52,12 @@ bool Segmenter::splitFile() {
                 if(currPos == numOfPcks - 1) {
                     buff_t = new char[size % DATA_SIZE];
                     fh.read(buff_t, size % DATA_SIZE);
+                    tData.data_size = size % DATA_SIZE;
                 }
                 else {
                     buff_t = new char[DATA_SIZE];
                     fh.read(buff_t, DATA_SIZE);
+                    tData.data_size = DATA_SIZE;
                 }
 
                 // Set data to be put in vector

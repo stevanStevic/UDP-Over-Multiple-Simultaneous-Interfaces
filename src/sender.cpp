@@ -59,11 +59,17 @@ void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
         int result;
         struct pcap_pkthdr* packet_header;
         const unsigned char* packet_data;
-      //  for(int i = 0; i < 200; i++) {
-            //std::cout << segmenter->getNumOfPcks() << std::endl;
-       // }
 
-        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, pd.data, pd.data_num, segmenter->getNumOfPcks(), DATA_SIZE, src_ip_eth, dest_ip_eth);
+/*
+        for(int i = 0; i < pd.data_size; i++) {
+            std::cout << pd.data[i];
+        }
+        std::cout << std::endl;
+        std::cout << std::endl;
+
+        */
+
+        fill_data_frame(&frame_to_send, source_mac_eth, dest_mac_eth, pd.data, pd.data_num, segmenter->getNumOfPcks(), pd.data_size, src_ip_eth, dest_ip_eth);
         pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
 
         while ((result = pcap_next_ex(device_handle_eth, &packet_header, &packet_data)) >= 0) {
@@ -144,7 +150,7 @@ int main() {
             return -1;
     }
 
-    char b[100] = "/home/rtrk/Desktop/example.txt";
+    char b[100] = "/home/stevan/Desktop/ORM2/tux.png";
     Segmenter segmenter(b);
     segmenter.splitFile();
 
