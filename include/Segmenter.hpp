@@ -19,7 +19,7 @@ class Segmenter {
 private:
     char* fileName;
     std::list<pck_data> fileParts;
-    unsigned long long size;
+    unsigned long long sizeOfFile;
     unsigned long long numOfPcks;
     int currPos;
     int partsInVector;
@@ -37,17 +37,30 @@ public:
         return numOfPcks;
     }
 
-    int splitFile();
-    bool getSize();
-    bool isFull() {
-        return full;
-    }
+    unsigned int getSize() {return fileParts.size();}
 
-    int getFront(pck_data* pd);
-    void putPartBack(pck_data);
     bool isFinished() {
         return currPos >= numOfPcks ? true : false;
     }
+
+    bool isAllSent() {
+    //    std::cout << fileParts.empty() << std::endl;
+      //  std::cout << isFinished() << std::endl;
+        if(fileParts.empty() && isFinished()) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    int splitFile();
+    bool getSizeOfFile();
+    bool isFull() {
+        return full;
+    }
+    int getFront(pck_data* pd);
+    void putPartBack(pck_data);
 };
 
 

@@ -10,20 +10,20 @@ Segmenter::Segmenter(char* fileName) {
     full = false;
     currPos = 0;
     partsInVector = 0;
-    if(getSize() == false) {
+    if(getSizeOfFile() == false) {
         std::cout << "[ERROR] Can't open file " << fileName << std::endl;
     }
 }
 
-bool Segmenter::getSize() {
+bool Segmenter::getSizeOfFile() {
     // Opens the file and positions at the end
     std::ifstream fh(fileName, std::ios::in|std::ios::binary|std::ios::ate);
 
     if (fh.is_open())
     {
         // Because position is at the end, it returns the size of a file
-        size = fh.tellg();
-        numOfPcks = size / DATA_SIZE;
+        sizeOfFile = fh.tellg();
+        numOfPcks = sizeOfFile / DATA_SIZE;
         numOfPcks++; //The last one that is not DATA_SIZE size
 
         return true;
@@ -54,9 +54,9 @@ int Segmenter::splitFile() {
 
                     //If it's last one than only the rest of the size needs to be read, not DATA_SIZE
                     if(currPos == numOfPcks - 1) {
-                        buff_t = new char[size % DATA_SIZE];
-                        fh.read(buff_t, size % DATA_SIZE);
-                        tData.data_size = size % DATA_SIZE;
+                        buff_t = new char[sizeOfFile % DATA_SIZE];
+                        fh.read(buff_t, sizeOfFile % DATA_SIZE);
+                        tData.data_size = sizeOfFile % DATA_SIZE;
                     }
                     else {
                         buff_t = new char[DATA_SIZE];
