@@ -16,6 +16,7 @@
 #include <mutex>
 #include <fstream>
 #include <string.h>
+#include "Assembler.hpp"
 
 /*
  * Global variables, for communication between threads and proper
@@ -42,17 +43,10 @@ unsigned char dest_ip_wlan[6] = {0xc0, 0xa8, 0x2b, 0xaa};
 #define PATH "/home/godra/Desktop/example.png"
 
 int main(){
-
+    char error_buffer[PCAP_ERRBUF_SIZE];
     pcap_if_t* devices;
     pcap_if_t* device_eth;
     pcap_if_t* device_wlan;
-    pcap_t* device_handle_eth;
-    pcap_t* device_handle_wlan;
-    char error_buffer[PCAP_ERRBUF_SIZE];
-    unsigned int netmask_eth;
-    unsigned int netmask_wlan;
-    char filter_exp[] = "udp portrange 27015-27016";
-    struct bpf_program fcode;
 
     expected = 0;
 
@@ -89,95 +83,11 @@ int main(){
 
     printf("You have selected device %s ", device_wlan->name);
 
-    // Open the capture device
-    if ((device_handle_eth = pcap_open_live( device_eth->name,		// name of the device
-                              65536,						// portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
-                              1,							// promiscuous mode
-                              500,							// read timeout
-                              error_buffer					// buffer where error message is stored
-                            ) ) == NULL)
-    {
-        printf("\nUnable to open the adapter. %s is not supported by libpcap/WinPcap\n", device_eth->name);
-        pcap_freealldevs(devices);
-        return -1;
-    }
+    std::thread eth_thread(reciever_thread_fun, device_eth, src_mac_eth, dest_mac_eth, src_ip_eth, dest_ip_eth);
+    //std::thread wlan_thread(reciever_thread_fun, device_handle_wlan, src_mac_wlan, dest_mac_wlan, src_ip_wlan, dest_ip_wlan);
 
-
-    // Open the capture device
-    if ((device_handle_wlan = pcap_open_live( device_wlan->name,		// name of the device
-                              65536,						// portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
-                              1,							// promiscuous mode
-                              500,							// read timeout
-                              error_buffer					// buffer where error message is stored
-                            ) ) == NULL)
-    {
-        printf("\nUnable to open the adapter. %s is not supported by libpcap/WinPcap\n", device_wlan->name);
-        pcap_freealldevs(devices);
-        return -1;
-    }
-
-#ifdef _WIN32
-    if(device_eth->addresses != NULL)
-        /* Retrieve the mask of the first address of the interface */
-        netmask_eth=((struct sockaddr_in *)(device_eth->addresses->netmask))->sin_addr.S_un.S_addr;
-    else
-        /* If the interface is without addresses we suppose to be in a C class network */
-        netmask_eth=0xffffff;
-#else
-    if (!device_eth->addresses->netmask)
-        netmask_eth = 0;
-    else
-        netmask_eth = ((struct sockaddr_in *)(device_eth->addresses->netmask))->sin_addr.s_addr;
-#endif
-
-
-#ifdef _WIN32
-    if(device_eth->addresses != NULL)
-        /* Retrieve the mask of the first address of the interface */
-        netmask_wlan=((struct sockaddr_in *)(device_eth->addresses->netmask))->sin_addr.S_un.S_addr;
-    else
-        /* If the interface is without addresses we suppose to be in a C class network */
-        netmask_wlan=0xffffff;
-#else
-    if (!device_eth->addresses->netmask)
-        netmask_wlan = 0;
-    else
-        netmask_wlan = ((struct sockaddr_in *)(device_eth->addresses->netmask))->sin_addr.s_addr;
-#endif
-
-    // Compile the filter
-    if (pcap_compile(device_handle_eth, &fcode, filter_exp, 1, netmask_eth) < 0)
-    {
-         printf("\n Unable to compile the packet filter. Check the syntax.\n");
-         return -1;
-    }
-
-    // Set the filter
-    if (pcap_setfilter(device_handle_eth, &fcode) < 0)
-    {
-        printf("\n Error setting the filter.\n");
-        return -1;
-    }
-
-
-    // Compile the filter
-    if (pcap_compile(device_handle_wlan, &fcode, filter_exp, 1, netmask_wlan) < 0)
-    {
-         printf("\n Unable to compile the packet filter. Check the syntax.\n");
-         return -1;
-    }
-
-    // Set the filter
-    if (pcap_setfilter(device_handle_wlan, &fcode) < 0)
-    {
-        printf("\n Error setting the filter.\n");
-        return -1;
-    }
-
-    std::thread eth_thread(eth_thread_function, device_handle_eth);
-    std::thread wlan_thread(wlan_thread_function, device_handle_wlan);
     eth_thread.join();
-    wlan_thread.join();
+    //wlan_thread.join();
 
     //file.close();
     return 0;
@@ -222,12 +132,55 @@ pcap_if_t* select_device(pcap_if_t* devices) {
 }
 
 
-void eth_thread_function(pcap_t* device_handle){
-
+void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char* dest_mac, unsigned char* src_ip, unsigned char* dest_ip){
+    pcap_t* device_handle;
+    char error_buffer[PCAP_ERRBUF_SIZE];
+    unsigned int netmask;
+    char filter_exp[] = "udp portrange 27015-27016";
+    struct bpf_program fcode;
     int result;							// result of pcap_next_ex function
     struct pcap_pkthdr* packet_header;	// header of packet (timestamp and length)
     const unsigned char* packet_data;	// packet content
 
+    // Open the capture device
+    if ((device_handle = pcap_open_live(device->name,		// name of the device
+                              65536,						// portion of the packet to capture (65536 guarantees that the whole packet will be captured on all the link layers)
+                              1,							// promiscuous mode
+                              500,							// read timeout
+                              error_buffer					// buffer where error message is stored
+                            ) ) == NULL)
+    {
+        printf("\nUnable to open the adapter. %s is not supported by libpcap/WinPcap\n", device->name);
+        return;
+    }
+
+#ifdef _WIN32
+    if(device->addresses != NULL)
+        /* Retrieve the mask of the first address of the interface */
+        netmask=((struct sockaddr_in *)(device->addresses->netmask))->sin_addr.S_un.S_addr;
+    else
+        /* If the interface is without addresses we suppose to be in a C class network */
+        netmask=0xffffff;
+#else
+    if (!device->addresses->netmask)
+        netmask = 0;
+    else
+        netmask = ((struct sockaddr_in *)(device->addresses->netmask))->sin_addr.s_addr;
+#endif
+
+    // Compile the filter
+    if (pcap_compile(device_handle, &fcode, filter_exp, 1, netmask) < 0)
+    {
+         printf("\n Unable to compile the packet filter. Check the syntax.\n");
+         return;
+    }
+
+    // Set the filter
+    if (pcap_setfilter(device_handle, &fcode) < 0)
+    {
+        printf("\n Error setting the filter.\n");
+        return;
+    }
 
     printf("\nStrating data recieve over ethernet...\n");
 
@@ -237,14 +190,13 @@ void eth_thread_function(pcap_t* device_handle){
         char* temp = new char[DATA_SIZE];
 
 		if(result == 0) {
-			std::cout << "Timeout expired" << std::endl;
-		
+			std::cout << "Timeout expired" << std::endl;	
 		}else {
 
             frame* pFrame;
             pFrame = (frame*)packet_data;
 
-            std::cout << "ETHERNET" << std::endl;
+            std::cout << device->name << std::endl;
             std::cout << "Result : " << result << std::endl;
             std::cout << "Frame captured" << std::endl;
             std::cout << "Expected :" << expected << std::endl;
@@ -252,7 +204,7 @@ void eth_thread_function(pcap_t* device_handle){
             std::cout << "Total data : " << pFrame->fch.num_of_total_frames << std::endl;
 
             ack_frame af;
-            fill_ack_frame(&af, src_mac_eth, dest_mac_eth, pFrame->fch.frame_count, src_ip_eth, dest_ip_eth);
+            fill_ack_frame(&af, src_mac, dest_mac, pFrame->fch.frame_count, src_ip, dest_ip);
             pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
 
             if(pFrame->fch.frame_count == expected){ //If frame is in order
@@ -345,131 +297,5 @@ void eth_thread_function(pcap_t* device_handle){
 		   if(pFrame->fch.num_of_total_frames == expected)
 		        break;
 		}
-    }
-}
-
-void wlan_thread_function(pcap_t* device_handle){
-
-    int result;							// result of pcap_next_ex function
-    struct pcap_pkthdr* packet_header;	// header of packet (timestamp and length)
-    const unsigned char* packet_data;	// packet content
-
-
-    printf("\nStrating data recieve over wireless...\n");
-
-    while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
-
-        //Allocating new buffer for acepting data
-        char* temp = new char[DATA_SIZE];
-
-        if(result == 0) {
-            std::cout << "Timeout expired" << std::endl;
-        }else {
-
-            frame* pFrame;
-            pFrame = (frame*)packet_data;
-
-            std::cout << "WLAN" << std::endl;
-            std::cout << "Result : " << result << std::endl;
-            std::cout << "Frame captured" << std::endl;
-            std::cout << "Expected :" << expected << std::endl;
-            std::cout << "Recieved : " << pFrame->fch.frame_count << std::endl;
-            std::cout << "Total data : " << pFrame->fch.num_of_total_frames << std::endl;
-
-            ack_frame af;
-            fill_ack_frame(&af, src_mac_wlan, dest_mac_wlan, pFrame->fch.frame_count, src_ip_wlan, dest_ip_wlan);
-            pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
-
-            if(pFrame->fch.frame_count == expected){ //If frame is in order
-                //Lock here, for file manipulation
-                file_mutex.lock();
-
-                std::cout << "WLAN" << std::endl;
-
-                file.open(PATH, std::ios::out | std::ios::app | std::ios::binary);
-                if(!file.is_open()){
-                    printf("File opening failed\n");
-                }
-
-                memcpy(temp, pFrame->fch.data, pFrame->fch.data_len * sizeof(char));
-                file.write(temp, pFrame->fch.data_len);
-                file.close();
-                expected = expected + 1; //Increment to next frame
-                file_mutex.unlock();
-
-                //After writing to file check the out-of-order-buffer for more frames to write to file
-                std::vector<fc_header>::iterator it;
-                int i;
-
-                if(!common_buffer.empty()) {
-
-                    //Lock out-of-order-buffer-mutex for walk through that buffer
-                    common_buffer_mutex.lock();
-                    it = common_buffer.begin();
-                    i = 0;
-                    while(it != common_buffer.end()) {
-
-                        fc_header current_item = (fc_header)(*it);
-
-                        if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
-
-                            file_mutex.lock(); //Lock file mutex before writing to file
-                            file.open(PATH, std::ios::out | std::ios::app | std::ios::binary); //Open file
-                            if(!file.is_open()){
-                                printf("File opening failed");
-                            }
-
-                            memcpy(temp, pFrame->fch.data, pFrame->fch.data_len * sizeof(char));
-                            file.write(temp, pFrame->fch.data_len);
-                            file.close(); //Close file
-                            expected = expected + 1; //Increment to expect next fram
-                            file_mutex.unlock(); //Unlock file mutex after writing to file
-
-                            common_buffer.erase(common_buffer.begin() + i); //Erase that good frame from out-of-order-buffer
-
-                            if(!common_buffer.empty()) {
-                                it = common_buffer.begin();
-                                i = 0;
-                                continue;
-                            }else {
-                                break;
-                            }
-                        }
-                        i++;
-                        it++;
-                    }
-
-                    //Unlock out-of-order-buffer-mutex after iteration through it
-                    common_buffer_mutex.unlock();
-                }
-
-           } else {
-
-                if(pFrame->fch.frame_count < expected)
-                    break;
-
-
-                std::cout << "\nIde preko reda!!!\n";
-
-                common_buffer_mutex.lock(); //Lock down here for adding it to temp buffer (for out of order frames)
-
-                common_buffer.push_back(pFrame->fch);
-                std::vector<fc_header>::iterator it;
-                std::cout << "###########Sadrzaj bafera za out of order ###########" << std::endl;
-                for(it = common_buffer.begin(); it != common_buffer.end(); it++){
-                    fc_header current_item = (fc_header)(*it);
-                    std::cout << current_item.frame_count << std::endl;
-                }
-                std::cout << "#####################################################" << std::endl;
-
-                common_buffer_mutex.unlock(); //Unlock after adding it to temp buffer
-
-           }
-
-           delete[] temp;
-
-           if(pFrame->fch.num_of_total_frames == expected)
-                break;
-        }
     }
 }

@@ -130,6 +130,8 @@ void ethThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
             pcap_sendpacket(device_handle_eth, (const unsigned char*)&frame_to_send, sizeof(frame));
         }
     }
+
+    pcap_close(device_handle_eth);
 }
 
 void wlanThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
@@ -234,6 +236,8 @@ void wlanThreadFunction(pcap_if_t* device, Segmenter* segmenter) {
             pcap_sendpacket(device_handle_wlan, (const unsigned char*)&frame_to_send, sizeof(frame));
         }
     }
+
+    pcap_close(device_handle_wlan);
 }
 
 void segmenterThreadFunction(Segmenter* segmenter) {
