@@ -4,29 +4,7 @@
 #include <netinet/in.h>
 #endif
 
-#include <stdio.h>
-#include <iostream>
-#include <pcap.h>
-#include "protocol_headers.h"
-#include "network.hpp"
 #include "reciever.hpp"
-#include "Segmenter.hpp"
-#include <vector>
-#include <thread>
-#include <mutex>
-#include <fstream>
-#include <string.h>
-#include "Assembler.hpp"
-
-/*
- * Global variables, for communication between threads and proper
- * file asembly.
- */
-std::ofstream file;
-unsigned long long expected;
-std::vector<fc_header> common_buffer;
-std::mutex common_buffer_mutex;
-std::mutex file_mutex;
 
 unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9}; //steva
 unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a}; //godra
@@ -40,15 +18,13 @@ unsigned char src_mac_wlan[6] = {0x54, 0x27, 0x1e, 0x83, 0x59, 0x8d}; //godra
 unsigned char src_ip_wlan[4] = {0xc0, 0xa8, 0x2b, 0xc4};
 unsigned char dest_ip_wlan[6] = {0xc0, 0xa8, 0x2b, 0xaa};
 
-#define PATH "/home/godra/Desktop/example.png"
+#define PATH "/home/stevan/Desktop/example.png"
 
 int main(){
     char error_buffer[PCAP_ERRBUF_SIZE];
     pcap_if_t* devices;
     pcap_if_t* device_eth;
     pcap_if_t* device_wlan;
-
-    expected = 0;
 
     /* Retrieve the device list on the local machine */
     if(pcap_findalldevs(&devices, error_buffer) == -1)
@@ -57,39 +33,31 @@ int main(){
         return -1;
     }
 
-    printf("\nSelect your ethernet interface first :\n\n");
     // Chose one device from the list
+    printf("\nSelect your ethernet interface first :\n\n");
     device_eth = select_device(devices);
-
-    // Check if device is valid
-    if(device_eth == NULL)
-    {
-        pcap_freealldevs(devices);
-        return -1;
-    }
 
     printf("You have selected device %s \n", device_eth->name);
 
-    printf("\nSelecet your wireless interface now :\n\n");
     // Chose one device from the list
+    printf("\nSelecet your wireless interface now :\n\n");
     device_wlan = select_device(devices);
-
-    // Check if device is valid
-    if(device_wlan == NULL)
-    {
-        pcap_freealldevs(devices);
-        return -1;
-    }
 
     printf("You have selected device %s ", device_wlan->name);
 
-    std::thread eth_thread(reciever_thread_fun, device_eth, src_mac_eth, dest_mac_eth, src_ip_eth, dest_ip_eth);
+    char txt[] = "/home/stevan/Desktop/example.png";
+    Assembler assembler(txt);
+
+    std::thread eth_thread(reciever_thread_fun, device_eth, src_mac_eth, dest_mac_eth, src_ip_eth, dest_ip_eth, &assembler);
     //std::thread wlan_thread(reciever_thread_fun, device_handle_wlan, src_mac_wlan, dest_mac_wlan, src_ip_wlan, dest_ip_wlan);
 
     eth_thread.join();
     //wlan_thread.join();
 
-    //file.close();
+    //assembler.closeFile();
+
+    pcap_freealldevs(devices);
+
     return 0;
 }
 
@@ -132,7 +100,7 @@ pcap_if_t* select_device(pcap_if_t* devices) {
 }
 
 
-void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char* dest_mac, unsigned char* src_ip, unsigned char* dest_ip){
+void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char* dest_mac, unsigned char* src_ip, unsigned char* dest_ip, Assembler* assembler){
     pcap_t* device_handle;
     char error_buffer[PCAP_ERRBUF_SIZE];
     unsigned int netmask;
@@ -185,117 +153,40 @@ void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned cha
     printf("\nStrating data recieve over ethernet...\n");
 
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
-
-        //Allocating new buffer for acepting data
-        char* temp = new char[DATA_SIZE];
-
 		if(result == 0) {
 			std::cout << "Timeout expired" << std::endl;	
 		}else {
-
             frame* pFrame;
+            ack_frame af;
+
             pFrame = (frame*)packet_data;
 
             std::cout << device->name << std::endl;
             std::cout << "Result : " << result << std::endl;
             std::cout << "Frame captured" << std::endl;
-            std::cout << "Expected :" << expected << std::endl;
+            //std::cout << "Expected :" << assembler->getExpected() << std::endl;
             std::cout << "Recieved : " << pFrame->fch.frame_count << std::endl;
             std::cout << "Total data : " << pFrame->fch.num_of_total_frames << std::endl;
 
-            ack_frame af;
             fill_ack_frame(&af, src_mac, dest_mac, pFrame->fch.frame_count, src_ip, dest_ip);
             pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
+/*
+            assembler->pushToBuffer(pFrame->fch);
+            assembler->printBuffer();
+            assembler->writeToFile();
+*/
 
-            if(pFrame->fch.frame_count == expected){ //If frame is in order
-                //Lock here, for file manipulation
-                file_mutex.lock();
+            if(pFrame->fch.frame_count == 6) {
+                break;
+            }
 
-                std::cout << "ETH" << std::endl;
-
-                file.open(PATH, std::ios::out | std::ios::app | std::ios::binary);
-                if(!file.is_open()){
-                    printf("File opening failed\n");
-                }
-
-                memcpy(temp, pFrame->fch.data, pFrame->fch.data_len * sizeof(char));
-                file.write(temp, pFrame->fch.data_len);
-                file.close();
-                expected = expected + 1; //Increment to next frame
-                file_mutex.unlock();
-
-                //After writing to file check the out-of-order-buffer for more frames to write to file
-                std::vector<fc_header>::iterator it;
-                int i;
-
-                if(!common_buffer.empty()){
-
-                    //Lock out-of-order-buffer-mutex for walk through that buffer
-                    common_buffer_mutex.lock();
-                    it = common_buffer.begin();
-                    i = 0;
-                    while(it != common_buffer.end()) {
-
-                        fc_header current_item = (fc_header)(*it);
-
-                        if(current_item.frame_count == expected){ //If the expected frame is found in out-of-order-buffer
-
-                            file_mutex.lock(); //Lock file mutex before writing to file
-                            file.open(PATH, std::ios::out | std::ios::app | std::ios::binary); //Open file
-                            if(!file.is_open()){
-                                printf("File opening failed");
-                            }
-
-                            memcpy(temp, pFrame->fch.data, pFrame->fch.data_len * sizeof(char));
-                            file.write(temp, pFrame->fch.data_len);
-                            file.close(); //Close file
-                            expected = expected + 1; //Increment to expect next fram
-                            file_mutex.unlock(); //Unlock file mutex after writing to file
-
-                            common_buffer.erase(common_buffer.begin() + i); //Erase that good frame from out-of-order-buffer
-                            if(!common_buffer.empty()) {
-                                it = common_buffer.begin();
-                                i = 0;
-                                continue;
-                            }else {
-                                break;
-                            }
-
-                        }
-                    i++;
-                    it++;
-                    }
-
-                    //Unlock out-of-order-buffer-mutex after iteration through it
-                    common_buffer_mutex.unlock();
-                }
-
-           } else {
-
-                if(pFrame->fch.frame_count < expected)
-                    break;
-
-                std::cout << "\nIde preko reda!!!\n";
-
-                common_buffer_mutex.lock(); //Lock down here for adding it to temp buffer (for out of order frames)
-
-                common_buffer.push_back(pFrame->fch);
-                std::vector<fc_header>::iterator it;
-                std::cout << "###########Sadrzaj bafera za out of order ###########" << std::endl;
-                for(it = common_buffer.begin(); it != common_buffer.end(); it++){
-                    fc_header current_item = (fc_header)(*it);
-                    std::cout << current_item.frame_count << std::endl;
-                }
-                std::cout << "#####################################################" << std::endl;
-
-                common_buffer_mutex.unlock(); //Unlock after adding it to temp buffer
-
-		   }
-
-           delete[] temp;
-
-		   if(pFrame->fch.num_of_total_frames == expected)
-		        break;
+            /*
+            if(pFrame->fch.num_of_total_frames == assembler->getExpected()) {
+                std::cout << "pusi ga steku" << std::endl;
+                break;
+            }*/
 		}
     }
+
+    pcap_close(device_handle);
 }

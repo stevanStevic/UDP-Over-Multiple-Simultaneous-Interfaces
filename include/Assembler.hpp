@@ -22,10 +22,15 @@ public:
         fh.close();
     }
 
+    void closeFile() {
+        fh.close();
+    }
+
+    void printBuffer();
+
     char *getFileName() {
         return fileName;
     }
-
     void pushToBuffer(fc_header pck);
     void writeToFile();
 

@@ -15,6 +15,7 @@ Assembler::Assembler(char* fileName) {
     }
 }
 
+
 void Assembler::pushToBuffer(fc_header pck) {
     if(pck.frame_count < expected) {
         return;
@@ -23,24 +24,49 @@ void Assembler::pushToBuffer(fc_header pck) {
     std::unique_lock<std::mutex> lock(listMutex);
     fileParts.push_back(pck);
 
-    fileParts.sort(compareFunc);
+    //fileParts.sort(compareFunc);
 }
 
 void Assembler::writeToFile() {
-    char* buff;
+    //char *buff;
 
     std::unique_lock<std::mutex> lock(listMutex);
     if(!fileParts.empty()) {
-        while(fileParts.front().frame_count == expected) {
-            fc_header pck = fileParts.front();
+        fc_header pck = (fc_header)fileParts.front();
+
+        while(pck.frame_count == expected) {
             fileParts.pop_front();
 
-            buff = new char[pck.data_len];
-            memcpy(buff, pck.data, sizeof(char) * pck.data_len);
+            //buff = new char[pck.data_len];
+            //memcpy(buff, pck.data, sizeof(char) * pck.data_len);
 
-            fh.write(buff, pck.data_len);
+            //std::cout<< pck.data_len << std::endl;
+            fh.write(pck.data, pck.data_len);
 
             expected++;
+
+            //delete[]buff;
+
+            if(!fileParts.empty())
+                pck = (fc_header)fileParts.front();
+            else
+                break;
         }
+    }
+}
+
+void Assembler::printBuffer() {
+    std::list<fc_header>::iterator it;
+
+    std::unique_lock<std::mutex> lock(listMutex);
+    if(fileParts.empty()) {
+        std::cout<< "Buffer is empty" <<std::endl;
+        return;
+    }
+
+    for(it = fileParts.begin(); it != fileParts.end(); it++) {
+        fc_header temp = (fc_header)(*it);
+
+        std::cout<< temp.frame_count <<std::endl;
     }
 }

@@ -278,11 +278,11 @@ int main() {
 
     std::thread segmenterThread(segmenterThreadFunction, &segmenter);
     std::thread ethThread(ethThreadFunction, device_eth, &segmenter);
-    std::thread wlanThread(wlanThreadFunction, device_wlan, &segmenter);
+   // std::thread wlanThread(wlanThreadFunction, device_wlan, &segmenter);
 
 
     ethThread.join();
-    wlanThread.join();
+    //wlanThread.join();
     segmenterThread.join();
 
     int n;
