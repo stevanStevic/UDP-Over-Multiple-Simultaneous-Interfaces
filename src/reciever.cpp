@@ -6,19 +6,19 @@
 
 #include "reciever.hpp"
 
-unsigned char dest_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9}; //steva
-unsigned char src_mac_eth[6] = { 0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a}; //godra
+unsigned char dest_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xf1, 0xbf}; //steva
+unsigned char src_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xeb, 0xd9}; //godra
 
-unsigned char src_ip_eth[4] = {0x0a, 0x51, 0x23, 0x29};
+unsigned char src_ip_eth[4] = {0x0a, 0x51, 0x23, 0x31};
 unsigned char dest_ip_eth[4] = {0x0a, 0x51, 0x23, 0x2b};
 
-unsigned char dest_mac_wlan[6] = {0x60, 0xd8, 0x19, 0x59, 0x0d, 0xb3}; //steva
-unsigned char src_mac_wlan[6] = {0x54, 0x27, 0x1e, 0x83, 0x59, 0x8d}; //godra
+unsigned char dest_mac_wlan[6] = {0x00, 0x0f, 0x60, 0x04, 0x51, 0xe2}; //steva
+unsigned char src_mac_wlan[6] = {0x00, 0x0f, 0x60, 0x05, 0x53, 0x94}; //godra
 
 unsigned char src_ip_wlan[4] = {0xc0, 0xa8, 0x2b, 0xc4};
 unsigned char dest_ip_wlan[6] = {0xc0, 0xa8, 0x2b, 0xaa};
 
-#define PATH "/home/stevan/Desktop/example.png"
+#define PATH "/home/rtrk/Desktop/example.png"
 
 int main(){
     char error_buffer[PCAP_ERRBUF_SIZE];
@@ -46,15 +46,13 @@ int main(){
     printf("You have selected device %s ", device_wlan->name);
 
     char txt[] = "/home/stevan/Desktop/example.png";
-    Assembler assembler(txt);
+    Assembler assembler(PATH);
 
     std::thread eth_thread(reciever_thread_fun, device_eth, src_mac_eth, dest_mac_eth, src_ip_eth, dest_ip_eth, &assembler);
-    //std::thread wlan_thread(reciever_thread_fun, device_handle_wlan, src_mac_wlan, dest_mac_wlan, src_ip_wlan, dest_ip_wlan);
+    std::thread wlan_thread(reciever_thread_fun, device_wlan, src_mac_wlan, dest_mac_wlan, src_ip_wlan, dest_ip_wlan, &assembler);
 
     eth_thread.join();
-    //wlan_thread.join();
-
-    //assembler.closeFile();
+    wlan_thread.join();
 
     pcap_freealldevs(devices);
 
@@ -152,9 +150,10 @@ void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned cha
 
     printf("\nStrating data recieve over ethernet...\n");
 
-    while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0){
+    while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0 && !assembler->isFinished()){
 		if(result == 0) {
-			std::cout << "Timeout expired" << std::endl;	
+			std::cout << "Timeout expired" << std::endl;
+				
 		}else {
             frame* pFrame;
             ack_frame af;
@@ -164,27 +163,20 @@ void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned cha
             std::cout << device->name << std::endl;
             std::cout << "Result : " << result << std::endl;
             std::cout << "Frame captured" << std::endl;
-            //std::cout << "Expected :" << assembler->getExpected() << std::endl;
+            std::cout << "Expected :" << assembler->getExpected() << std::endl;
             std::cout << "Recieved : " << pFrame->fch.frame_count << std::endl;
             std::cout << "Total data : " << pFrame->fch.num_of_total_frames << std::endl;
 
             fill_ack_frame(&af, src_mac, dest_mac, pFrame->fch.frame_count, src_ip, dest_ip);
             pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
-/*
-            assembler->pushToBuffer(pFrame->fch);
-            assembler->printBuffer();
-            assembler->writeToFile();
-*/
 
-            if(pFrame->fch.frame_count == 6) {
+			
+            assembler->pushToBuffer(pFrame->fch);
+            assembler->writeToFile();
+
+            if(assembler->isFinished()) {
                 break;
             }
-
-            /*
-            if(pFrame->fch.num_of_total_frames == assembler->getExpected()) {
-                std::cout << "pusi ga steku" << std::endl;
-                break;
-            }*/
 		}
     }
 

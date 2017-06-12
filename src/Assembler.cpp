@@ -8,11 +8,12 @@ Assembler::Assembler(char* fileName) {
     this->fileName = fileName;
     this->expected = 0;
     this->fileParts.clear();
+	this->finished = false;
 
-    fh.open(fileName, std::ios::out | std::ios::binary);
-    if(!fh.is_open()) {
-        std::cout << "[ERROR] Couldn't open a file: " << fileName << std::endl;
-    }
+	fh = fopen(fileName, "wb");
+	if(fh == NULL) {
+		std::cout << "[ERROR] Couldn't open a file: " << fileName << std::endl;
+	}
 }
 
 
@@ -24,11 +25,10 @@ void Assembler::pushToBuffer(fc_header pck) {
     std::unique_lock<std::mutex> lock(listMutex);
     fileParts.push_back(pck);
 
-    //fileParts.sort(compareFunc);
+	fileParts.sort(compareFunc);
 }
 
 void Assembler::writeToFile() {
-    //char *buff;
 
     std::unique_lock<std::mutex> lock(listMutex);
     if(!fileParts.empty()) {
@@ -37,15 +37,14 @@ void Assembler::writeToFile() {
         while(pck.frame_count == expected) {
             fileParts.pop_front();
 
-            //buff = new char[pck.data_len];
-            //memcpy(buff, pck.data, sizeof(char) * pck.data_len);
-
-            //std::cout<< pck.data_len << std::endl;
-            fh.write(pck.data, pck.data_len);
+			//Write binary to file
+			fwrite(pck.data, sizeof(char), pck.data_len, fh);
 
             expected++;
 
-            //delete[]buff;
+			if(pck.frame_count == pck.num_of_total_frames - 1) {
+                finished = true;
+            }
 
             if(!fileParts.empty())
                 pck = (fc_header)fileParts.front();

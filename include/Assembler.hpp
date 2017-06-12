@@ -14,16 +14,17 @@ private:
     std::list<fc_header> fileParts;
     std::mutex listMutex;
     unsigned long long expected;
-    std::ofstream fh;
+    FILE* fh;
+	bool finished;
 
 public:
     Assembler(char* fileName);
     ~Assembler() {
-        fh.close();
+        fclose(fh);
     }
 
     void closeFile() {
-        fh.close();
+        fclose(fh);
     }
 
     void printBuffer();
@@ -35,6 +36,7 @@ public:
     void writeToFile();
 
     unsigned long long getExpected() { return expected;}
+	bool isFinished() {return finished;}
 };
 
 #endif
