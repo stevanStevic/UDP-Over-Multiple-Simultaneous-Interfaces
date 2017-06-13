@@ -10,15 +10,15 @@ unsigned char dest_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xf1, 0xbf}; //steva
 unsigned char src_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xeb, 0xd9}; //godra
 
 unsigned char src_ip_eth[4] = {0x0a, 0x51, 0x23, 0x31};
-unsigned char dest_ip_eth[4] = {0x0a, 0x51, 0x23, 0x2b};
+unsigned char dest_ip_eth[4] = {};
 
-unsigned char dest_mac_wlan[6] = {0x00, 0x0f, 0x60, 0x04, 0x51, 0xe2}; //steva
-unsigned char src_mac_wlan[6] = {0x00, 0x0f, 0x60, 0x05, 0x53, 0x94}; //godra
+unsigned char dest_mac_wlan[6] = {0x60, 0xd8, 0x19, 0x59, 0x0d, 0xb3}; //steva
+unsigned char src_mac_wlan[6] = {0x54, 0x27, 0x1e, 0x83, 0x59, 0x8d}; //godra
 
 unsigned char src_ip_wlan[4] = {0xc0, 0xa8, 0x2b, 0xc4};
 unsigned char dest_ip_wlan[6] = {0xc0, 0xa8, 0x2b, 0xaa};
 
-#define PATH "/home/rtrk/Desktop/example.png"
+#define PATH "/home/godra/Desktop/example.png"
 
 int main(){
     char error_buffer[PCAP_ERRBUF_SIZE];
@@ -111,9 +111,11 @@ void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned cha
 
     printf("\nStrating data recieve over ethernet...\n");
 
+    pcap_setnonblock(device_handle, 1, error_buffer); // Enabling non blocking mdoe for pcap_next_ex
+
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0 && !assembler->isFinished()){
 		if(result == 0) {
-			std::cout << "Timeout expired" << std::endl;
+            //std::cout << "Timeout expired" << std::endl;
 				
 		}else {
             frame* pFrame;
