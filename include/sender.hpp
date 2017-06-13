@@ -10,6 +10,8 @@
 
 #include "Segmenter.hpp"
 
+#define ACK_TIMEOUT 20
+
 void packet_handler(unsigned char* user, const struct pcap_pkthdr* packet_header, const unsigned char* packet_data);
 
 void segmenterThreadFunction(Segmenter* segmenter);

@@ -111,10 +111,10 @@ void sender_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char*
                 }
             }
             else {
-                if(++tryCountNotRecieved  == 5) {
+                if(++tryCountNotRecieved == ACK_TIMEOUT) {
                     segmenter->putPartBack(pd);
                     std::cout << "Device not available any more" << std::endl;
-                    return;
+                    break;
                 }
                 else {
                     std::cout << "Timeout expired. Sending packet " << pd.data_num << " again. Try count: " << tryCountNotRecieved << std::endl;
@@ -161,16 +161,16 @@ int main() {
             return -1;
     }
 
-    char b[100] = "/home/stevan/Desktop/ORM2/Vezba6.zip";
+    char b[100] = "/home/stevan/Desktop/ORM2/tux.png";
     Segmenter segmenter(b);
 
     std::thread segmenterThread(segmenterThreadFunction, &segmenter);
     std::thread ethThread(sender_thread_fun, device_eth, src_mac_eth, dest_mac_eth, src_ip_eth, dest_ip_wlan, &segmenter);
-    //std::thread wlanThread(sender_thread_fun, device_wlan, src_mac_wlan, dest_mac_wlan, src_ip_wlan, dest_ip_wlan, &segmenter);
+    std::thread wlanThread(sender_thread_fun, device_wlan, src_mac_wlan, dest_mac_wlan, src_ip_wlan, dest_ip_wlan, &segmenter);
 
 
     ethThread.join();
-   // wlanThread.join();
+    wlanThread.join();
     segmenterThread.join();
 
     int n;
