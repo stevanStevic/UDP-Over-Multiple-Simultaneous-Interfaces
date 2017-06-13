@@ -82,3 +82,43 @@ void fill_ack_frame(ack_frame* frame_to_send, unsigned char* source_mac, unsigne
 
     frame_to_send->ack_num = ack_number;
 }
+
+pcap_if_t* select_device(pcap_if_t* devices) {
+    int i = 0;
+    pcap_if_t* device;
+    int device_number;
+
+    // Count devices and provide jumping to the selected device
+    // Print the list
+    for(device=devices; device; device=device->next){
+        printf("%d. %s", ++i, device->name);
+        if (device->description)
+            printf(" (%s)\n", device->description);
+        else
+            printf(" (No description available)\n");
+    }
+
+    // Check if list is empty
+    if (i==0){
+        printf("\nNo interfaces found! Make sure WinPcap is installed.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Enter the output interface number (1-%d):",i);
+    scanf("%d", &device_number);
+
+    if(device_number < 1 || device_number > i){
+        printf("\nInterface number out of range.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Select the first device...
+    device=devices;
+    // ...and then jump to chosen devices
+    for (i=0; i<device_number-1; i++){
+        device=device->next;
+    }
+
+    return device;
+}
+

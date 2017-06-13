@@ -13,7 +13,6 @@
 #include "Assembler.hpp"
 
 // Function declarations
-pcap_if_t* select_device(pcap_if_t* devices);
 void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char* dst_mac, unsigned char* src_ip, unsigned char* dst_ip, Assembler* assembler);
 
 #endif

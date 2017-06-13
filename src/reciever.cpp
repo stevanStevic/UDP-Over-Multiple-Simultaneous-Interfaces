@@ -46,7 +46,7 @@ int main(){
     printf("You have selected device %s ", device_wlan->name);
 
     char txt[] = "/home/stevan/Desktop/example.png";
-    Assembler assembler(PATH);
+    Assembler assembler((char*)PATH);
 
     std::thread eth_thread(reciever_thread_fun, device_eth, src_mac_eth, dest_mac_eth, src_ip_eth, dest_ip_eth, &assembler);
     std::thread wlan_thread(reciever_thread_fun, device_wlan, src_mac_wlan, dest_mac_wlan, src_ip_wlan, dest_ip_wlan, &assembler);
@@ -58,45 +58,6 @@ int main(){
 
     return 0;
 }
-
-// This function provide possibility to choose device from the list of available devices
-pcap_if_t* select_device(pcap_if_t* devices) {
-    int device_number;
-    int i=0;			// Count devices and provide jumping to the selected device
-    pcap_if_t* device;	// Iterator for device list
-    // Print the list
-    for(device=devices; device; device=device->next)
-    {
-        printf("%d. %s", ++i, device->name);
-        if (device->description)
-            printf(" (%s)\n", device->description);
-        else
-            printf(" (No description available)\n");
-    }
-
-    // Check if list is empty
-    if(i==0)
-    {
-        printf("\nNo interfaces found! Make sure libpcap/WinPcap is installed.\n");
-        return NULL;
-    }
-
-    // Pick one device from the list
-    printf("Enter the interface number (1-%d):",i);
-    scanf("%d", &device_number);
-
-    if(device_number < 1 || device_number > i)
-    {
-        printf("\nInterface number out of range.\n");
-        return NULL;
-    }
-
-    // Jump to the selected device
-    for(device=devices, i=0; i< device_number-1 ;device=device->next, i++);
-
-    return device;
-}
-
 
 void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char* dest_mac, unsigned char* src_ip, unsigned char* dest_ip, Assembler* assembler){
     pcap_t* device_handle;
