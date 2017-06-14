@@ -15,8 +15,8 @@ unsigned char dest_ip_eth[4] = {};
 unsigned char dest_mac_wlan[6] = {0x60, 0xd8, 0x19, 0x59, 0x0d, 0xb3}; //steva
 unsigned char src_mac_wlan[6] = {0x54, 0x27, 0x1e, 0x83, 0x59, 0x8d}; //godra
 
-unsigned char src_ip_wlan[4] = {0xc0, 0xa8, 0x2b, 0xc4};
-unsigned char dest_ip_wlan[6] = {0xc0, 0xa8, 0x2b, 0xaa};
+unsigned char src_ip_wlan[4] = {192, 168, 9, 104};
+unsigned char dest_ip_wlan[6] = {192, 168, 9, 105};
 
 #define PATH "/home/godra/Desktop/example.png"
 
@@ -43,16 +43,21 @@ int main(){
     printf("\nSelecet your wireless interface now :\n\n");
     device_wlan = select_device(devices);
 
-    printf("You have selected device %s ", device_wlan->name);
+    printf("You have selected device %s \n", device_wlan->name);
+    fflush(stdout);
 
-    char txt[] = "/home/stevan/Desktop/example.png";
     Assembler assembler((char*)PATH);
 
     std::thread eth_thread(reciever_thread_fun, device_eth, src_mac_eth, dest_mac_eth, src_ip_eth, dest_ip_eth, &assembler);
     std::thread wlan_thread(reciever_thread_fun, device_wlan, src_mac_wlan, dest_mac_wlan, src_ip_wlan, dest_ip_wlan, &assembler);
 
+//    pcap_free(device_eth);
+//    pcap_free(device_wlan);
+
     eth_thread.join();
     wlan_thread.join();
+
+    std::cout << std::endl << "Transfer complete" << std::endl;
 
     pcap_freealldevs(devices);
 
@@ -109,38 +114,28 @@ void reciever_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned cha
         return;
     }
 
-    printf("\nStrating data recieve over ethernet...\n");
-
     pcap_setnonblock(device_handle, 1, error_buffer); // Enabling non blocking mdoe for pcap_next_ex
 
     while((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0 && !assembler->isFinished()){
-		if(result == 0) {
-            //std::cout << "Timeout expired" << std::endl;
-				
-		}else {
+        if(result != 0) {
             frame* pFrame;
             ack_frame af;
 
             pFrame = (frame*)packet_data;
 
-            std::cout << device->name << std::endl;
-            std::cout << "Result : " << result << std::endl;
-            std::cout << "Frame captured" << std::endl;
-            std::cout << "Expected :" << assembler->getExpected() << std::endl;
-            std::cout << "Recieved : " << pFrame->fch.frame_count << std::endl;
-            std::cout << "Total data : " << pFrame->fch.num_of_total_frames << std::endl;
+//            std::cout << device->name << std::endl;
+//            std::cout << "Result : " << result << std::endl;
+//            std::cout << "Frame captured" << std::endl;
+//            std::cout << "Expected :" << assembler->getExpected() << std::endl;
+//            std::cout << "Recieved : " << pFrame->fch.frame_count << std::endl;
+//            std::cout << "Total data : " << pFrame->fch.num_of_total_frames << std::endl;
 
             fill_ack_frame(&af, src_mac, dest_mac, pFrame->fch.frame_count, src_ip, dest_ip);
             pcap_sendpacket(device_handle, (const unsigned char*)&af, sizeof(ack_frame));
 
-			
             assembler->pushToBuffer(pFrame->fch);
             assembler->writeToFile();
-
-            if(assembler->isFinished()) {
-                break;
-            }
-		}
+        }
     }
 
     pcap_close(device_handle);

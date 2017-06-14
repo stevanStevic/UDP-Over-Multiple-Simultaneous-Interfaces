@@ -40,6 +40,9 @@ void Assembler::writeToFile() {
 			//Write binary to file
 			fwrite(pck.data, sizeof(char), pck.data_len, fh);
 
+            printf("Downloading %.2f%% \r", (float)expected / pck.num_of_total_frames * 100);
+            fflush(stdout);
+
             expected++;
 
 			if(pck.frame_count == pck.num_of_total_frames - 1) {
