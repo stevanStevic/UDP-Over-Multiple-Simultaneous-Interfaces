@@ -22,10 +22,8 @@ unsigned char dest_ip_eth[4] = {0x0a, 0x51, 0x23, 0x29};
 unsigned char dest_mac_wlan[6] = {0x54, 0x27, 0x1e, 0x83, 0x59, 0x8d}; //godra
 unsigned char src_mac_wlan[6] = {0x60, 0xd8, 0x19, 0x59, 0x0d, 0xb3};
 
-unsigned char src_ip_wlan[4] = {0xc0, 0xa8, 0x2b, 0xaa};
-unsigned char dest_ip_wlan[4] = {0xc0, 0xa8, 0x2b, 0xc4};
-
-char error_buffer[PCAP_ERRBUF_SIZE];
+unsigned char src_ip_wlan[4] = {192, 168, 9, 105};
+unsigned char dest_ip_wlan[4] = {192, 168, 9, 104};
 
 void sender_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char* dest_mac, unsigned char* src_ip, unsigned char* dest_ip, Segmenter* segmenter) {
     char error_buffer[PCAP_ERRBUF_SIZE];
@@ -34,9 +32,10 @@ void sender_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char*
     struct bpf_program fcode;
     pcap_t* device_handle;
     frame frame_to_send;
+    int deviceAvailable = 1;
 
     // Open the output eth adapter
-    if ((device_handle = pcap_open_live(device->name, 65536, 1, 1000, error_buffer)) == NULL){
+    if ((device_handle = pcap_open_live(device->name, 65536, 1, 20, error_buffer)) == NULL){
         printf("\n Unable to open adapter %s.\n", device->name);
         return;
     }
@@ -93,35 +92,34 @@ void sender_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char*
         while ((result = pcap_next_ex(device_handle, &packet_header, &packet_data)) >= 0) {
             if(result == 1) {
                 ack_frame* ack_f = (ack_frame*)packet_data;
-                std::cout << device->name << "ack: " << ack_f->ack_num  << std::endl;
+
+                if(!deviceAvailable) {
+                    std::cout << "Device " << device->name << " is available again" << std::endl;
+                    deviceAvailable = 1;
+                }
+
+                //std::cout << device->name << "ack: " << ack_f->ack_num  << std::endl;
                 if(ack_f->ack_num == pd.data_num) {
-                    delete []pd.data;
+
                     break;
                 }
-                else {
-                    if(++tryCountRecieved  == 5) {
-                        segmenter->putPartBack(pd);
-                        std::cout << "Didn't recive ack for packet: " << pd.data_num << std::endl;
-                        break;
-                    }
-                    else {
-                        std::cout << "Recived wrong ack number: " << ack_f->ack_num << " expected: " << pd.data_num << " Try count: " << tryCountRecieved << std::endl;
-
-                    }
+                else {                 
+                    segmenter->putPartBack(pd);
                 }
             }
             else {
                 if(++tryCountNotRecieved == ACK_TIMEOUT) {
                     segmenter->putPartBack(pd);
-                    std::cout << "Device not available any more" << std::endl;
+                    if(deviceAvailable) {
+                        deviceAvailable = 0;
+                        std::cout << "Device " << device->name << " not available any more" << std::endl;
+                    }
+
                     break;
-                }
-                else {
-                    std::cout << "Timeout expired. Sending packet " << pd.data_num << " again. Try count: " << tryCountNotRecieved << std::endl;
                 }
             }
 
-            pcap_sendpacket(device_handle, (const unsigned char*)&frame_to_send, sizeof(frame));
+            //pcap_sendpacket(device_handle, (const unsigned char*)&frame_to_send, sizeof(frame));
         }
     }
 
@@ -136,10 +134,11 @@ void segmenterThreadFunction(Segmenter* segmenter) {
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     pcap_if_t* devices;
     pcap_if_t* device_eth;
     pcap_if_t* device_wlan;
+    char error_buffer[PCAP_ERRBUF_SIZE];
 
     /*
      * Retrieve the device list on the local machine
@@ -161,7 +160,7 @@ int main() {
             return -1;
     }
 
-    char b[100] = "/home/stevan/Desktop/ORM2/tux.png";
+    char b[100] = "/home/stevan/Desktop/ORM2/Vezba6.zip";
     Segmenter segmenter(b);
 
     std::thread segmenterThread(segmenterThreadFunction, &segmenter);
