@@ -8,22 +8,24 @@
 #include "sender.hpp"
 #include "Segmenter.hpp"
 
-unsigned char src_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xf1, 0xbf};
-unsigned char dest_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xeb, 0xd9};
+#define PATH "/home/stevan/Desktop/ORM2/testFiles/500kb.dat"
+
+unsigned char src_mac_eth[6] = { 0x10, 0x1f, 0x74, 0xcc, 0x28, 0xf9};
+unsigned char dest_mac_eth[6] = {0x40, 0x16, 0x7e, 0x84, 0xb9, 0x8a};
 
 /*
 unsigned char source_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xf1, 0xbf};
 unsigned char dest_mac_eth[6] = { 0x38, 0xd5, 0x47, 0xde, 0xeb, 0xd9};
 */
 
-unsigned char src_ip_eth[4] = {0x0a, 0x51, 0x23, 0x2b};
-unsigned char dest_ip_eth[4] = {0x0a, 0x51, 0x23, 0x29};
+unsigned char src_ip_eth[4] = {10, 42, 0, 1};
+unsigned char dest_ip_eth[4] = {192, 168, 9, 106};
 
 unsigned char dest_mac_wlan[6] = {0x54, 0x27, 0x1e, 0x83, 0x59, 0x8d}; //godra
 unsigned char src_mac_wlan[6] = {0x60, 0xd8, 0x19, 0x59, 0x0d, 0xb3};
 
 unsigned char src_ip_wlan[4] = {192, 168, 9, 105};
-unsigned char dest_ip_wlan[4] = {192, 168, 9, 104};
+unsigned char dest_ip_wlan[4] = {192, 168, 9, 103};
 
 void sender_thread_fun(pcap_if_t* device, unsigned char* src_mac, unsigned char* dest_mac, unsigned char* src_ip, unsigned char* dest_ip, Segmenter* segmenter) {
     char error_buffer[PCAP_ERRBUF_SIZE];
@@ -160,8 +162,9 @@ int main(int argc, char* argv[]) {
             return -1;
     }
 
-    char b[100] = "/home/stevan/Desktop/ORM2/Vezba6.zip";
-    Segmenter segmenter(b);
+    Segmenter segmenter((char*)PATH);
+
+    auto start = std::chrono::steady_clock::now();
 
     std::thread segmenterThread(segmenterThreadFunction, &segmenter);
     std::thread ethThread(sender_thread_fun, device_eth, src_mac_eth, dest_mac_eth, src_ip_eth, dest_ip_wlan, &segmenter);
@@ -172,8 +175,14 @@ int main(int argc, char* argv[]) {
     wlanThread.join();
     segmenterThread.join();
 
-    int n;
-    std::cin >> n;
+    auto finish = std::chrono::steady_clock::now();
+    double elapsed_seconds = std::chrono::duration_cast<
+      std::chrono::duration<double> >(finish - start).count();
+
+
+
+    std::cout << "Finished in ..." << elapsed_seconds << std::endl;
+    getchar();
 
     return 0;
 }

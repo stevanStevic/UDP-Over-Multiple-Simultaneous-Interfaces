@@ -12,7 +12,7 @@
 #include <time.h>
 #endif
 
-#define DATA_SIZE 1200
+#define DATA_SIZE 1400
 
 #pragma pack(1)
 typedef struct ethernet_header{
