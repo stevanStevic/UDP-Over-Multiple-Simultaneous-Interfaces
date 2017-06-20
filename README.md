@@ -35,6 +35,7 @@ After starting, sender will show list of available devies and ask user to chose 
 Graphs that show transfer statistics.
 
 ![alt text](https://user-images.githubusercontent.com/9517614/27356886-834f93b8-5610-11e7-86ae-7e81735a677b.jpg)
+__Transfered file size is 10 kB.
 
 ![alt text](https://user-images.githubusercontent.com/9517614/27356887-8351575c-5610-11e7-972d-2fa0d49444d0.jpg)
 
