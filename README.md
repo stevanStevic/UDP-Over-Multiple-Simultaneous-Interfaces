@@ -1,4 +1,4 @@
-README v0.0 / DECEMBER 2016
+README v0.0 / JUNE 2017
 
 # UDP-Over-Simultaneous-Interfaces
 
@@ -22,13 +22,21 @@ After starting, reciever will show you the list of available devices and ask you
 
 ### Starting the sender
 
-Sender will attempt to send packets that contain file parts to reciever, after he sends each packet he will wait to get acknowledgement from reciever for a certain time period, if ack doesen't arrive he will resend that packet, and if he doesen't get ack after multiple atempts he will recognize that interface is down and notify the user that about that. If interface comes back up, sender will again notify user about that event and will continue using that interface. Both sender and reciever use predefined ports 27015 and 27016.
+Sender will attempt to send packets that contain file parts to reciever, after he sends each packet he will wait to get acknowledgement from reciever for a certain time period, if ack doesen't arrive he will resend that packet, and if he doesen't get ack after multiple atempts he will recognize that interface is down and notify the user about that. If interface comes back up, sender will again notify user about that event and will continue using that interface. Both sender and reciever use predefined ports 27015 and 27016.
 
 Here is an example of starting the sender from the top directory:
 
 >sudo ./sender path_to_file_you_wish_to_send
 
 After starting, sender will show list of available devies and ask user to chose devices interfaces, ethernet and wireless respctively. If user fails to do so, program will malfunction. When the transfer is complete, it will print out time transmision took and will close.
+
+## Statistics
+
+Graphs that show transfer statistics.
+
+![alt text](https://user-images.githubusercontent.com/9517614/27356886-834f93b8-5610-11e7-86ae-7e81735a677b.jpg)
+
+![alt text](https://user-images.githubusercontent.com/9517614/27356887-8351575c-5610-11e7-972d-2fa0d49444d0.jpg)
 
 ## Contributing
 
@@ -47,14 +55,16 @@ For any questions, bugs, or development you can contact us:
 
 You will need...
 * CMake
-* *gcc* - C/C++ compiler.
-* [libpcap](http://www.tcpdump.org/) - Library that provides network functionalities, and it is core of this program.
+* *gcc and g++* - C/C++ compiler for Linux or *MinGW* for Windows
+* [libpcap](http://www.tcpdump.org/) for Linux or WinPcap for Windows - Library that provides network functionalities, and it is core of this program.
 * clang-format-3.8 - Application that formats source code (optional)
 * Unix-like, Debian-based host (the implementation was tested on Ubuntu14.04)
 * (or Windows 7 or later)
 * If you are using Windows we suggest that you use Qt creator for running the project.
 
 ### Installation
+
+#### For Linux
 
 You should postion yourself in desired directory. For example, if you want to be downloaded in Home directory simply type:  
 >cd ~
@@ -70,9 +80,9 @@ And after that just type in few simple comands:
 
 That's it. Now you are ready!
 
-#### For windows
+#### For Windows
 
-Just get requirements from **Requirements** and use QTCreator to open the project. Setup needed kits (Click [**Here**](https://www.youtube.com/watch?v=eZ-HOc2P_EI) for video guide on how to do that). 
+Just use QtCreator to open the project. Setup needed for development kits (Click [**Here**](https://www.youtube.com/watch?v=eZ-HOc2P_EI) for video guide on how to do that). 
 
 ### Configuration
 
@@ -80,11 +90,11 @@ No further configuration is needed.
 
 ## Credits
 
-Project atuhors are:
+Project authors are:
 * Marko Dragojevic
 * Stevan Stevic
 
-It is done as part of our final exam for _Fundamentals of Computer Networks 1_ course.
+It is done as part of our final exam for _Fundamentals of Computer Networks 2_ course.
 
 ## License
 
