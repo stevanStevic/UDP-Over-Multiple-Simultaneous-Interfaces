@@ -4,8 +4,7 @@ README v0.0 / DECEMBER 2016
 
 ## Introduction
 
-A client - server demonstration of classic topic server with unlimited number of subscribers, as well as publishers. Read [**this**](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) to get familiar with this topic.  
-This server forwards publishers messages for given topic to subscribed clients. It does that by implementing **hash map** that has **keys** with _topic names_, and **values** as _list_ of subscribed users. It does not store messages anywhere during that proccess.
+A demonstration of custom UDP based protocol that uses two interfaces (Wifi and ethernet) to transfer any kind of files between two users. Actual data transfer is concurent and it is based on data race. Sender parses file and sends those parsed pieces to reciever, who reconsturcts file from recieved segements. Both, sender and reciever have buffer in which they store file parts (sender gets file parts from segmenter, and reciever gets file parts from captured packets and asembler combines them into a single file). Whole protocl is based on pcap library. Read [**this**](https://en.wikipedia.org/wiki/Pcap) to get familiar with topic
 
 ## Usage
 
