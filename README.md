@@ -1,6 +1,6 @@
 README v0.0 / DECEMBER 2016
 
-# UDO-Over-Simultaneous-Interfaces
+# UDP-Over-Simultaneous-Interfaces
 
 ## Introduction
 
