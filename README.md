@@ -4,36 +4,21 @@ README v0.0 / DECEMBER 2016
 
 ## Introduction
 
-A demonstration of custom UDP based protocol that uses two interfaces (Wifi and ethernet) to transfer any kind of files between two users. Actual data transfer is concurent and it is based on data race. Sender parses file and sends those parsed pieces to reciever, who reconsturcts file from recieved segements. Both, sender and reciever have buffer in which they store file parts (sender gets file parts from segmenter, and reciever gets file parts from captured packets and asembler combines them into a single file). Whole protocl is based on pcap library. Read [**this**](https://en.wikipedia.org/wiki/Pcap) to get familiar with topic
+A demonstration of custom UDP based protocol that uses two interfaces (Wifi and ethernet) to transfer any kind of files between two users. Actual data transfer is concurent and it is based on data race. Sender parses file and sends those parsed pieces to reciever, who reconsturcts file from recieved segements. Both, sender and reciever have buffer in which they store file parts (sender gets file parts from segmenter, and reciever gets file parts from captured packets and asembler combines them into a single file). Whole protocl is based on pcap library. Read [**this**](https://en.wikipedia.org/wiki/Pcap) to get familiar with topic. Also this protocol is reliable, which means transfer will continue even if one of two interfaces goes down for any reason. If interface that went down, comes back online, this protocol will continue using that interface.
 
 ## Usage
 
-###Starting the server
+###Starting the reciever
 
-Server listens for connections both from subscribers and from publishers. It _distinguishes_ subscribers from publisher _over the port_ they used to connect to server. That being said, ports **need to be provided** to server when starting it, because there are no default ports. This is done using -s and -p flag for subscribers, publishers respectively. If you don't provide right flags you will see error codes:  
-* 1 - Number of arguments is not valid.
-* 2 - Flags are not correctly set.
-* 3 - Invalid flag is used.
+Reciever listens on device available devices (eth, wlan) and will start recieving packets, only from defined ports (27015, 27016) which are chosen durning develpoment. When senders starts the transfer, reciever will recognize this and will start with file recieving and assembly.
 
-Server lets ports to be initalised from full range 0 - 65535, but if they are reserved, OS will give error message (usually about permissions). It is not recommended to mess with that, instead change port to other (higher are more likely to work).
+Here is an example of starting the reciever from the top directory:
 
-Here is an example of starting the server from the top directory:
+>sudo ./reciever
 
->./out/server -p 30000 -s 27015
+Super user privileges are needed due libpcap.
 
-Server will try to create socket for publisher at port 30000 and port for subscribers at 27015. If successfull it will print info about that, and start listening for connections.
-
-This is the output for this example, when started:
-
->Port for publishers: 30000  
->Port for subscribers: 27015  
->To shutdown server type: quit/QUIT  
->Socket for publishers created!  
->Socket for subscribers created!  
-
-####Server Usage
-Server is not interactive, except when command quit/QUIT is entered. It only provides information on new connections or when someone disconnects.  
-Command **quit/QUIT** is self-explanatory and tells the server to go down.
+After starting, reciever will show you the list of available devices and ask you to chose your device interfaces, ethernet and wireless respectively. If you fail to do so, program should close. Durning file transfer it will print out the percentage of transfer completion, and will tell you when the transfer is completed. Recieved file will be present in same directory as reciever.o.
 
 ####Starting the Subscriber
 Subscriber is used when you want to recive info about certain topic. Info is provided by publishers.  
