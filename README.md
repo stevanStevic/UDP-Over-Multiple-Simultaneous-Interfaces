@@ -4,13 +4,13 @@ README v0.0 / DECEMBER 2016
 
 ## Introduction
 
-A demonstration of custom UDP based protocol that uses two interfaces (Wifi and ethernet) to transfer any kind of files between two users. Actual data transfer is concurent and it is based on data race. Sender parses file and sends those parsed pieces to reciever, who reconsturcts file from recieved segements. Both, sender and reciever have buffer in which they store file parts (sender gets file parts from segmenter, and reciever gets file parts from captured packets and asembler combines them into a single file). Whole protocl is based on pcap library. Read [**this**](https://en.wikipedia.org/wiki/Pcap) to get familiar with topic. Also this protocol is reliable, which means transfer will continue even if one of two interfaces goes down for any reason. If interface that went down, comes back online, this protocol will continue using that interface.
+A demonstration of custom, __secure UDP based protocol__ that uses two interfaces (Wifi and ethernet) to transfer any kind of files between two users. Actual data transfer is concurent and it is based on data race. Sender parses file and sends those parsed pieces to reciever, who reconsturcts file from recieved segements. Both, sender and reciever have buffer in which they store file parts (sender gets file parts from segmenter, and reciever gets file parts from captured packets and asembler combines them into a single file). Whole protocol is based on usage __pcap library__. Read [**this**](https://en.wikipedia.org/wiki/Pcap) to get familiar with topic. Also this protocol is __reliable__, which means transfer will continue even if one of two interfaces goes down for any reason. If interface that went down, comes back online, this protocol will continue using that interface.
 
 ## Usage
 
-###Starting the reciever
+### Starting the reciever
 
-Reciever listens on device available devices (eth, wlan) and will start recieving packets, only from defined ports (27015, 27016) which are chosen durning develpoment. When senders starts the transfer, reciever will recognize this and will start with file recieving and assembly.
+Reciever listens on device available devices (eth, wlan) and will start recieving packets, only from defined ports (27015, 27016) which are chosen durning develpoment. When senders starts the transfer, reciever will recognize this and will start with file recieving and assembly. Each time reciver successfully recives a packet he will send acknowledgement to sender.
 
 Here is an example of starting the reciever from the top directory:
 
@@ -18,64 +18,22 @@ Here is an example of starting the reciever from the top directory:
 
 Super user privileges are needed due libpcap.
 
-After starting, reciever will show you the list of available devices and ask you to chose your device interfaces, ethernet and wireless respectively. If you fail to do so, program should close. Durning file transfer it will print out the percentage of transfer completion, and will tell you when the transfer is completed. Recieved file will be present in same directory as reciever.o.
+After starting, reciever will show you the list of available devices and ask you to chose your device interfaces, ethernet and wireless respectively. If user fails to do so, program should close. Durning file transfer it will print out the percentage of transfer completion, and will tell you when the transfer is completed. Recieved file will be present in same directory as reciever.o.
 
-####Starting the Subscriber
-Subscriber is used when you want to recive info about certain topic. Info is provided by publishers.  
-To start subscriber you use **client** executive, because it is adjusted to be used by both subscriber and publisher.  
-You have to provide server's port number on which you want to connect. You decide which, based on your intentions - do you want to be susbcriber or publisher. This is done using -p flag.  
-Also you need server's ip. This is done using -i flag.
+### Starting the sender
 
-Here is an example of starting the server from the top directory, and connecting to you local host:  
->./out/server -p 27015 -i 127.0.0.1
+Sender will attempt to send packets that contain file parts to reciever, after he sends each packet he will wait to get acknowledgement from reciever for a certain time period, if ack doesen't arrive he will resend that packet, and if he doesen't get ack after multiple atempts he will recognize that interface is down and notify the user that about that. If interface comes back up, sender will again notify user about that event and will continue using that interface. Both sender and reciever use predefined ports 27015 and 27016.
 
-Client will try to connect to this address and port, if successful you'll get following output:
->You have successfully connected to: 127.0.0.1 : 27015  
->If you want to communicate with the server, type in your message and press enter 
+Here is an example of starting the sender from the top directory:
 
-####Subscriber usage
-Subscriber has 3 commands:
-* **Subscribe**  
-	This command will subscribe you to specifed topic, so you could do that like this:  
-	>SUBSCRIBE FOOD
+>sudo ./sender path_to_file_you_wish_to_send
 
-	If topic dosen't exist you will get this message:  
-	>Specifed topic is not active, or it does'nt exist. Check your spelling, or try later!
-
-	Else you will recive following message:  
-	>You will publish information for topic: FOOD!
-
-* **Unsubscribe**  
-	This command will unsubscribe tou from specifed topic, example:  
-	>UNSUBSCRIBE FOOD
-
-	If successful this is the message:  
-	>You are sussccesfully unsubscribed! 
-
-* **Quit**  
-	This will get you off the server and quit program.
-
-They are all case insensitive.
-
-In the mean time you are listening for incoming messages from publishers. When they come you will recive them in this format:  
->[FOOD] I like eggs!
-
-####Starting the publisher
-Publisher has 2 commands:
-* **Publish**
-	This command will send information from publisher to subscribers. Here is th example:
-	>PUBLISH FOOD I like eggs!
-
-* **Quit**
-	This will quit and remove topic from hash map.
-
-They are all case insensitive.
+After starting, sender will show list of available devies and ask user to chose devices interfaces, ethernet and wireless respctively. If user fails to do so, program will malfunction. When the transfer is complete, it will print out time transmision took and will close.
 
 ## Contributing
 
-For now, only one publisher should publish news, because every time one disconnects, list of subscribers for that topic is erased and the topic is removed from the hash map. If two publishers provide info for the same topic, and one disconnects, list of subscribers is erased and topic removed although second is still active.  
-This happens because topics are not connected to publishers ip's. One of the ways to solve this is to implement another hashmap that also connects topics for list of publishers and keeps topics active as long as that list is not empty.  
-This could be patched.
+ __Note that this program is still under heavy development, so it has mac addresses and ip adresses hardcoded, this will be changed in later versions of program.__
+In this version of program multi reciever platform is not yet implemented, but it is itended in later versions of program. Also there are few bugs that sometimes occur due libpcap filter compiling, and causes program to crash. This will be patched in later versions.
 
 ## Help
 
@@ -88,13 +46,13 @@ For any questions, bugs, or development you can contact us:
 ### Requirements
 
 You will need...
+* CMake
 * *gcc* - C/C++ compiler.
-* [glib2](https://developer.gnome.org/glib/) - Library that provides the core application building blocks for libraries and applications written in C.
+* [libpcap](http://www.tcpdump.org/) - Library that provides network functionalities, and it is core of this program.
 * clang-format-3.8 - Application that formats source code (optional)
 * Unix-like, Debian-based host (the implementation was tested on Ubuntu14.04)
-
-Or, you can just type:  
->make install
+* (or Windows 7 or later)
+* If you are using Windows we suggest that you use Qt creator for running the project.
 
 ### Installation
 
@@ -102,16 +60,19 @@ You should postion yourself in desired directory. For example, if you want to be
 >cd ~
 
 Next step is to get the program:
->git clone https://github.com/stevanStevic/TopicServer  
->cd TopicServer
+>git clone https://github.com/stevanStevic/UDP-Over-Multiple-Simultaneous-Interfaces
+>cd UDP-Over-Multiple-Simultaneous-Interfaces
 
-Now, you need to install applications and programs from **Requirements** section or just type:  
->make install  
->make  
+And after that just type in few simple comands:
 
-to install and compile programs.
+>CMake CMakeLists.txt
+>make
 
 That's it. Now you are ready!
+
+#### For windows
+
+Just get requirements from **Requirements** and use QTCreator to open the project. Setup needed kits (Click [**Here**](https://www.youtube.com/watch?v=eZ-HOc2P_EI) for video guide on how to do that). 
 
 ### Configuration
 
