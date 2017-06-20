@@ -4,7 +4,7 @@ README v0.0 / DECEMBER 2016
 
 ## Introduction
 
-A simple client - server demonstration of classic topic server with unlimited number of subscribers, as well as publishers. Read [**this**](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) to get familiar with this topic.  
+A client - server demonstration of classic topic server with unlimited number of subscribers, as well as publishers. Read [**this**](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern) to get familiar with this topic.  
 This server forwards publishers messages for given topic to subscribed clients. It does that by implementing **hash map** that has **keys** with _topic names_, and **values** as _list_ of subscribed users. It does not store messages anywhere during that proccess.
 
 ## Usage
